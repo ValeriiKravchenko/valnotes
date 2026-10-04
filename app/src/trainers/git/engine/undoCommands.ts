@@ -326,8 +326,9 @@ function ambiguousArgument(token: string): string {
 /**
  * Решает, что считать ссылкой, а что путями, из позиционных токенов ДО "--" (target.md, часть VI,
  * «Убрать файл из индекса»; сверено напрямую, git 2.53.0, 26.09.2026 — см. отчёт):
- * - c явным "--": первый токен (если есть) ОБЯЗАН быть ссылкой ("fatal: Failed to resolve '<x>'
- *   as a valid tree." — иначе), остальное всегда пути, даже если ни один файл не существует.
+ * - c явным "--": первый токен (если есть) ОБЯЗАН быть ссылкой, иначе "fatal: Failed to resolve
+ *   '<x>' as a valid tree." (после "--" есть пути) или "… as a valid revision." (путей после "--"
+ *   нет); остальное всегда пути, даже если ни один файл не существует.
  * - без "--": ссылка побеждает, если первый токен ей разбирается; иначе, если это известный git
  *   путь (в HEAD/индексе/рабочем дереве) — путь; иначе — настоящая ошибка git «ambiguous
  *   argument» (единственная проверка на весь список: остальные токены дальше не проверяются —
@@ -337,11 +338,15 @@ function classifyResetPositionals(
   state: UndoState,
   positionalBeforeDD: string[],
   hasExplicitDD: boolean,
+  hasPathsAfterDD: boolean,
 ): { refId: string | null; paths: string[] } | { fatal: string } {
   if (hasExplicitDD) {
     if (!positionalBeforeDD.length) return { refId: null, paths: [] }
     const resolved = resolveRef(state, positionalBeforeDD[0])
-    if (resolved === null) return { fatal: `fatal: Failed to resolve '${positionalBeforeDD[0]}' as a valid tree.` }
+    if (resolved === null) {
+      const kind = hasPathsAfterDD ? 'tree' : 'revision'
+      return { fatal: `fatal: Failed to resolve '${positionalBeforeDD[0]}' as a valid ${kind}.` }
+    }
     return { refId: resolved, paths: positionalBeforeDD.slice(1) }
   }
   if (!positionalBeforeDD.length) return { refId: null, paths: [] }
@@ -390,7 +395,7 @@ function handleReset(state: UndoState, args: string[]): { state: UndoState; resu
     firstArg !== undefined && (classifyRefToken(firstArg, UNDO_REF_GRAMMAR) === 'foreign' || classifyPathspec(firstArg, { globs: false }) === 'foreign')
   const foreignToken = foreignFirst ? firstArg : [...restArgs, ...afterDD].find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
   if (foreignToken !== undefined) return fail(state, ue.optionOutOfScope(`git reset ${foreignToken}`, RESET_ALLOWED))
-  const classified = classifyResetPositionals(state, positionalBeforeDD, ddAt !== -1)
+  const classified = classifyResetPositionals(state, positionalBeforeDD, ddAt !== -1, afterDD.length > 0)
   if ('fatal' in classified) return fail(state, classified.fatal)
   const { refId, paths: refPaths } = classified
   const paths = refPaths.concat(afterDD)
