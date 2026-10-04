@@ -22,6 +22,13 @@ import {
   resolveSearchRef,
 } from './searchRepo'
 import { computeBlame, formatBlame } from './searchBlame'
+import {
+  INSPECT_REF_GRAMMAR,
+  SEARCH_REF_GRAMMAR,
+  classifyBlameForm,
+  classifyPathspec,
+  classifyRefToken,
+} from './outOfScopeForms'
 import { compilePattern, grepTree, type BreErrorKind } from './searchGrep'
 import {
   BLAME_KNOWN_OUT_OF_SCOPE,
@@ -56,6 +63,15 @@ function ambiguousArgument(token: string): string {
   return `fatal: ambiguous argument '${token}': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'`
 }
 
+/**
+ * Позиционный аргумент, который git принимает, а раздел 6 не разбирает: выражение ревизии вне
+ * грамматики раздела (`HEAD@{0}`, `HEAD^2`, `ревизия:путь`, `..`) или форма пути (`./x`, `../x`,
+ * глоб, магия pathspec). Обычное имя — нет: его отсутствие остаётся настоящей ошибкой git.
+ */
+function isForeignArgument(token: string, grammar: typeof SEARCH_REF_GRAMMAR): boolean {
+  return classifyRefToken(token, grammar) === 'foreign' || classifyPathspec(token, { globs: false }) === 'foreign'
+}
+
 // ---------- git grep ----------
 
 const GREP_ALLOWED = 'git grep <шаблон>, -n, -i, -ni, -l, -c, -w, -F, <шаблон> <файл>, <шаблон> -- <файл>…, <шаблон> <ссылка> [-- <файл>]'
@@ -81,6 +97,10 @@ function parseGrepFlagToken(token: string): GrepFlagParse {
   if (token.startsWith('--')) {
     const bare = token.split('=')[0]
     if (GREP_KNOWN_OUT_OF_SCOPE.includes(bare)) return { kind: 'outOfScope', usageToken: token }
+    // Однозначный префикс или отрицание известной опции git принимает (parse-options.c).
+    if (bare.length > 2 && GREP_KNOWN_OUT_OF_SCOPE.some((o) => o.startsWith(bare) || o === '--' + bare.slice('--no-'.length) && bare.startsWith('--no-'))) {
+      return { kind: 'outOfScope', usageToken: token }
+    }
     return { kind: 'unknown', token }
   }
   // "-NUM" — сокращение "-C NUM" (searchScope.ts, GREP_NUM_SHORTCUT), не кластер букв.
@@ -163,10 +183,15 @@ function handleGrep(state: SearchState, tokens: string[], rawInput: string): { s
       refId = resolved
     } else if (pathTokens.length === 0 && isTrackedIn(workingTree, token)) {
       barePathFilter = token
+    } else if (isForeignArgument(token, SEARCH_REF_GRAMMAR)) {
+      return fail(state, se.optionOutOfScope(`git grep ${positionals.join(' ')}`, GREP_ALLOWED))
     } else {
       return fail(state, ambiguousArgument(token), null, 128)
     }
   }
+  // Формы путей после "--" (./x, ../x, глоб, магия pathspec) git принимает, раздел 6 не разбирает.
+  const foreignPath = pathTokens.find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignPath !== undefined) return fail(state, se.optionOutOfScope(`git grep -- ${foreignPath}`, GREP_ALLOWED))
 
   const searchTree = refId !== null ? commitTree(state, refId) : workingTree
 
@@ -218,6 +243,12 @@ function handleBlame(state: SearchState, tokens: string[]): { state: SearchState
   let lRaw: string | null = null
   const positionals: string[] = []
 
+  // Повтор -L и значение, слитное с -L, git принимает — раздел 6 не разбирает (проверка до разбора флагов).
+  const lineRangeForm = classifyBlameForm(tokens, { isTrackedFile: () => false, isRevision: () => false })
+  if (lineRangeForm === 'repeatedLineRange' || lineRangeForm === 'gluedLineRange') {
+    return fail(state, se.optionOutOfScope(`git blame ${tokens.join(' ')}`, BLAME_ALLOWED))
+  }
+
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i]
     if (t === '-s') {
@@ -231,13 +262,29 @@ function handleBlame(state: SearchState, tokens: string[]): { state: SearchState
     }
     if (t.startsWith('-') && t !== '-') {
       const bare = t.startsWith('--') ? t.split('=')[0] : t
-      if (BLAME_KNOWN_OUT_OF_SCOPE.includes(bare) || BLAME_SCORE_OPTION.test(t)) return fail(state, se.optionOutOfScope(`git blame ${t}`, BLAME_ALLOWED))
+      const knownLong =
+        bare.startsWith('--') &&
+        bare.length > 2 &&
+        BLAME_KNOWN_OUT_OF_SCOPE.some((o) => o.startsWith(bare) || (bare.startsWith('--no-') && o === '--' + bare.slice('--no-'.length)))
+      if (BLAME_KNOWN_OUT_OF_SCOPE.includes(bare) || knownLong || BLAME_SCORE_OPTION.test(t)) return fail(state, se.optionOutOfScope(`git blame ${t}`, BLAME_ALLOWED))
       return fail(state, `${unknownBlameOption(t)}\n${BLAME_USAGE}`, null, 129)
     }
     positionals.push(t)
   }
 
   if (positionals.length === 0) return fail(state, BLAME_USAGE, null, 129)
+  // Формы, которые git принимает, а раздел 6 не разбирает: повтор -L, значение слитно с -L,
+  // ревизия перед файлом (в том числе HEAD@{N}), форма пути вне разбора. blame app.js utils.js
+  // (оба — файлы) остаётся настоящей ошибкой git.
+  const blameContext = {
+    isTrackedFile: (n: string) => isTrackedIn(headTree(state), n),
+    isRevision: (n: string) => resolveSearchRef(state, n) !== null,
+  }
+  const foreignBlame =
+    classifyBlameForm(tokens, blameContext) !== null ||
+    (positionals.length >= 2 && classifyRefToken(positionals[0], SEARCH_REF_GRAMMAR) === 'foreign') ||
+    positionals.some((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignBlame) return fail(state, se.optionOutOfScope(`git blame ${tokens.join(' ')}`, BLAME_ALLOWED))
   if (positionals.length >= 2) return fail(state, `fatal: bad revision '${positionals[0]}'`, null, 128)
 
   const file = positionals[0]
@@ -295,7 +342,7 @@ function handleShow(state: SearchState, tokens: string[]): { state: SearchState;
     const token = positionals[0]
     const resolved = resolveSearchRef(state, token)
     if (resolved !== null) id = resolved
-    else if (isTrackedIn(headTree(state), token)) return fail(state, se.optionOutOfScope(`git show ${token}`, SHOW_ALLOWED))
+    else if (isTrackedIn(headTree(state), token) || isForeignArgument(token, SEARCH_REF_GRAMMAR)) return fail(state, se.optionOutOfScope(`git show ${token}`, SHOW_ALLOWED))
     else return fail(state, ambiguousArgument(token), null, 128)
   }
 
@@ -349,7 +396,16 @@ function handleLog(state: SearchState, tokens: string[]): { state: SearchState; 
   let chain = commitChain(state, currentTip(state))
   if (positionals.length === 1) {
     const file = positionals[0]
-    if (!isTrackedIn(headTree(state), file)) return fail(state, ambiguousArgument(file), null, 128)
+    if (!isTrackedIn(headTree(state), file)) {
+      // Ревизия (ветка, HEAD~N, A..B, ..HEAD, HEAD@{N}) git принимает, раздел 6 историю по ревизиям
+      // не разбирает. Несуществующее обычное имя и a..b с несуществующими именами — настоящая ошибка git.
+      const sides = file.includes('..') ? file.split('..') : [file]
+      const resolvable = sides.length > 0 && sides.every((s) => s !== '' && resolveSearchRef(state, s) !== null)
+      if (resolvable || isForeignArgument(file, INSPECT_REF_GRAMMAR)) {
+        return fail(state, se.optionOutOfScope(`git log ${file}`, LOG_ALLOWED))
+      }
+      return fail(state, ambiguousArgument(file), null, 128)
+    }
     chain = chain.filter((id) => commitTouchesFile(state, id, file))
   }
 

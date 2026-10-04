@@ -223,9 +223,26 @@ export interface GrepMatch {
   content: string
 }
 
-/** Имена файлов дерева в порядке байтов имени (target.md, опасное место 6) — обычная сортировка JS-строк по кодам символов совпадает с этим порядком для имён из ASCII-букв раздела. */
+const utf8 = new TextEncoder()
+
+/**
+ * Сравнение имён по байтам UTF-8, как сортирует пути git (cache-entry/df-conflict, memcmp). Обычный
+ * `sort()` JS сравнивает кодовые единицы UTF-16 и ставит символы вне BMP (суррогаты D800–DFFF)
+ * раньше символов U+E000–U+FFFF, тогда как в UTF-8 порядок обратный (сверено на git 2.53.0).
+ */
+export function compareBytes(a: string, b: string): number {
+  const x = utf8.encode(a)
+  const y = utf8.encode(b)
+  const n = Math.min(x.length, y.length)
+  for (let i = 0; i < n; i++) {
+    if (x[i] !== y[i]) return x[i] - y[i]
+  }
+  return x.length - y.length
+}
+
+/** Имена файлов дерева в порядке байтов имени (target.md, опасное место 6). */
 export function sortedFileNames(tree: FileTree): string[] {
-  return Object.keys(tree).sort()
+  return Object.keys(tree).sort(compareBytes)
 }
 
 /** Строки файла — как в `cat -n` (target.md, «Исходное состояние»): содержимое хранится без завершающего перевода строки (тот же приём, что и в inspectDiff.ts, splitContentLines), поэтому `content.split('\n')` даёт ровно видимые строки файла, без «лишней» пустой строки в конце. */
@@ -236,10 +253,11 @@ export function fileLines(tree: FileTree, file: string): string[] {
 /**
  * Ищет `regex` по перечисленным файлам дерева `tree` (или по всем файлам дерева, если `files` не
  * передан) — по одной строке за раз, без флагов, влияющих на ФОРМАТ вывода (тех решает
- * searchCommands.ts). Порядок — по файлам (байты имени), внутри файла — по возрастанию номера строки.
+ * searchCommands.ts). Порядок — по файлам (байты имени, в том числе для явного списка), внутри файла — по возрастанию номера строки.
  */
 export function grepTree(tree: FileTree, regex: RegExp, files?: readonly string[]): GrepMatch[] {
-  const names = (files ?? sortedFileNames(tree)).filter((f) => has(tree, f))
+  // Явный список путей git тоже обходит в порядке байтов имени и без повторов (сверено на git 2.53.0).
+  const names = (files ? [...new Set(files)].sort(compareBytes) : sortedFileNames(tree)).filter((f) => has(tree, f))
   const matches: GrepMatch[] = []
   names.forEach((file) => {
     fileLines(tree, file).forEach((content, idx) => {
