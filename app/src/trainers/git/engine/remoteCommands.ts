@@ -45,7 +45,6 @@ import {
   PUSH_NON_FF_HINT,
   PUSH_USAGE,
   REMOTE_USAGE,
-  SECTION5_REAL_OPTIONS,
   SERVER_PATH,
   classifySection5Option,
   commandNeedsNoRepo,
@@ -58,6 +57,7 @@ import {
   REAL_GIT_COMMANDS,
 } from './remoteScope'
 import { classifySection2Option } from './branchScope'
+import { classifyPathspec, classifyPushRefspec, classifyRefToken, classifyRepositoryArgument, REMOTE_REF_GRAMMAR } from './outOfScopeForms'
 import type { ShellToken } from './shell'
 import { shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
@@ -88,8 +88,7 @@ function handleClone(state: RemoteState, args: string[]): { state: RemoteState; 
 
   const flag = args.find((a) => a.startsWith('-'))
   if (flag) {
-    const bare = flag.startsWith('--') ? flag.split('=')[0] : flag
-    if (SECTION5_REAL_OPTIONS.clone.includes(bare)) return fail(state, re.optionOutOfScope(`git clone ${flag}`, CLONE_ALLOWED))
+    if (classifySection5Option('clone', [], flag) === 'outOfScope') return fail(state, re.optionOutOfScope(`git clone ${flag}`, CLONE_ALLOWED))
     return fail(state, unknownFlagBlock(flag, CLONE_USAGE), null, 129)
   }
 
@@ -97,6 +96,11 @@ function handleClone(state: RemoteState, args: string[]): { state: RemoteState; 
   if (positionals.length > 2) return fail(state, re.optionOutOfScope('git clone <repo> <dir> <доп. аргументы>', CLONE_ALLOWED))
   const [repo, dir] = positionals
   if (/^(https?:\/\/|git@|ssh:\/\/)/i.test(repo ?? '')) return fail(state, re.cloneUrlOutOfScope(repo))
+  // Путь (включая адрес сервера /team/origin) git принимает, а раздел 5 файловую систему не
+  // моделирует: отказ. Именованный remote "origin" и неизвестное имя разбираются ниже.
+  if (repo !== undefined && classifyRepositoryArgument(repo) !== 'plain') {
+    return fail(state, re.optionOutOfScope(`git clone ${repo}`, CLONE_ALLOWED))
+  }
 
   // target.md, часть VII, опасное место 11: "origin" резолвится в сервер только СНАРУЖИ (до
   // clone) — терминал переходит внутрь копии сразу после успешного clone, и там "origin" уже не
@@ -119,8 +123,24 @@ function handleRemote(state: RemoteState, args: string[]): { state: RemoteState;
   if ((args[0] === '-v' || args[0] === '--verbose') && args.length === 1) {
     return ok(state, `origin\t${SERVER_PATH} (fetch)\norigin\t${SERVER_PATH} (push)`)
   }
+  const verboseOnly = args.every((a) => a === '-v' || a === '--verbose' || !a.startsWith('-'))
+  const verboseFlags = args.filter((a) => a === '-v' || a === '--verbose')
+  const rest = args.filter((a) => !a.startsWith('-'))
+  // Повтор -v git принимает (печатает то же, что и один -v), раздел 5 повтор не разбирает.
+  if (verboseOnly && verboseFlags.length > 1 && rest.length === 0) {
+    return fail(state, re.optionOutOfScope(`git remote ${args.join(' ')}`, 'git remote, git remote -v'))
+  }
+  // -v с лишним словом: git принимает -v и отвечает на слово как на неизвестную подкоманду.
+  if (verboseOnly && verboseFlags.length > 0 && rest.length > 0) {
+    return fail(state, `error: unknown subcommand: \`${rest[0]}'\n${REMOTE_USAGE}`, null, 129)
+  }
   const flag = args.find((a) => a.startsWith('-'))
-  if (flag) return fail(state, unknownFlagBlock(flag, REMOTE_USAGE), null, 129)
+  if (flag) {
+    if (classifySection5Option('remote', ['-v', '--verbose'], flag) === 'outOfScope') {
+      return fail(state, re.optionOutOfScope(`git remote ${args.join(' ')}`, 'git remote, git remote -v'))
+    }
+    return fail(state, unknownFlagBlock(flag, REMOTE_USAGE), null, 129)
+  }
   // Подкоманды (add/remove/rename/set-url/…) — настоящие возможности git, честно вне области
   // (target.md, часть VII, «Что НЕ входит»: «git remote add x y в git проходит молча»).
   return fail(state, re.remoteSubcommandOutOfScope(args.join(' ')))
@@ -149,6 +169,9 @@ function addPaths(state: RemoteState, paths: string[]): { state: RemoteState; re
     return ok({ ...state, local: { ...local, index: nextIndex } }, '')
   }
 
+  // Форма пути, которую git принимает, а раздел 5 не разбирает ("./x", "../x", глоб, магия pathspec).
+  const foreignPath = paths.find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignPath !== undefined) return fail(state, re.optionOutOfScope(`git add ${foreignPath}`, ADD_ALLOWED))
   const knownToGit = new Set<string>([...Object.keys(local.working), ...Object.keys(local.index), ...Object.keys(head)])
   const notFound = paths.find((f) => !knownToGit.has(f))
   if (notFound !== undefined) return fail(state, `fatal: pathspec '${notFound}' did not match any files`, null, 128)
@@ -352,6 +375,11 @@ function handleBranch(state: RemoteState, args: string[]): { state: RemoteState;
   let startId: string
   if (args.length === 2) {
     const resolved = resolveRef(local, args[1])
+    // Ссылка вне грамматики раздела 5 (HEAD~1, HEAD^, HEAD@{N}) и ветка слежения (origin/<ветка>)
+    // git принимает, раздел 5 не разбирает: отказ, а не «not a valid object name».
+    if (resolved === null && (classifyRefToken(args[1], REMOTE_REF_GRAMMAR) === 'foreign' || args[1].startsWith('origin/'))) {
+      return fail(state, re.optionOutOfScope(`git branch ${name} ${args[1]}`, BRANCH_ALLOWED))
+    }
     if (resolved === null) return fail(state, `fatal: not a valid object name: '${args[1]}'`, null, 128)
     startId = resolved
   } else {
@@ -430,6 +458,9 @@ function handleFetch(state: RemoteState, args: string[]): { state: RemoteState; 
   }
   const positionals = args.filter((a) => !a.startsWith('-'))
   // Код 128, как у push; у pull тот же текст даёт 1 (сверено на git 2.53.0, 26.09.2026).
+  if (positionals.length && classifyRepositoryArgument(positionals[0]) !== 'plain') {
+    return fail(state, re.optionOutOfScope(`git fetch ${positionals[0]}`, FETCH_ALLOWED))
+  }
   if (positionals.length && positionals[0] !== 'origin') return fail(state, NOT_A_REPO_BLOCK(positionals[0]), null, 128)
   if (positionals.length > 1) return fail(state, re.optionOutOfScope(`git fetch origin ${positionals.slice(1).join(' ')}`, FETCH_ALLOWED))
 
@@ -494,9 +525,13 @@ function handlePush(state: RemoteState, args: string[]): { state: RemoteState; r
   if (!positionals.length) return pushCurrentBranchRequiringUpstream(state, opts)
 
   const repoArg = positionals[0]
+  if (classifyRepositoryArgument(repoArg) !== 'plain') return fail(state, re.optionOutOfScope(`git push ${repoArg}`, PUSH_ALLOWED))
   if (repoArg !== 'origin') return fail(state, NOT_A_REPO_BLOCK(repoArg), null, 128)
 
   const branchPositionals = positionals.slice(1)
+  // refspec (<src>:<dst>, :<dst>, +ветка, refs/…, выражения ревизий) git принимает, раздел 5 не разбирает.
+  const foreignRefspec = branchPositionals.find((b) => classifyPushRefspec(b) === 'foreign')
+  if (foreignRefspec !== undefined) return fail(state, re.optionOutOfScope(`git push origin ${foreignRefspec}`, PUSH_ALLOWED))
   if (!branchPositionals.length) return pushCurrentBranchRequiringUpstream(state, opts)
 
   const local = state.local!
@@ -607,8 +642,12 @@ function handlePull(state: RemoteState, args: string[]): { state: RemoteState; r
   }
 
   const repoArg = positionals[0]
+  if (classifyRepositoryArgument(repoArg) !== 'plain') return fail(state, re.optionOutOfScope(`git pull ${repoArg}`, PULL_ALLOWED))
   if (repoArg !== 'origin') return fail(state, NOT_A_REPO_BLOCK(repoArg), null, 1)
   const branchArg = positionals[1]
+  if (branchArg !== undefined && classifyPushRefspec(branchArg) === 'foreign') {
+    return fail(state, re.optionOutOfScope(`git pull origin ${branchArg}`, PULL_ALLOWED))
+  }
   if (branchArg === undefined) {
     // `git pull origin` без ветки — как bare `git pull` (target.md: «выводят то же, что без аргумента» — тот же принцип для push origin/fetch origin; для pull origin явных прогонов без ветки нет, но это тот же самый refspec-механизм, что и pull без repo вовсе).
     return handlePull(state, args.filter((a) => a !== repoArg))
