@@ -26,6 +26,7 @@ import {
   trackedWorking,
 } from './inspectRepo'
 import { diffBetween, diffNameOnly, diffStat } from './inspectDiff'
+import { classifyPathspec, classifyRefToken, gitUnrecognizedArgument, INSPECT_REF_GRAMMAR } from './outOfScopeForms'
 import { classifySection3Option, gitNotACommand, isGlobalGitOption, isSection3Command, REAL_GIT_COMMANDS } from './inspectScope'
 import { shellTokenize } from './shell'
 import { has } from './util'
@@ -61,7 +62,20 @@ function rejectFlag(cmd: 'log' | 'diff' | 'show' | 'status', scopeFlags: readonl
   const cls = classifySection3Option(cmd, scopeFlags, token)
   if (cls === 'scope') return null
   if (cls === 'outOfScope') return ie.optionOutOfScope(`${usagePrefix} ${token}`, allowed)
+  // Заведомо несуществующая опция: у каждой команды git свой текст (проверено на git 2.53.0).
+  if (cmd === 'log' || cmd === 'show') return gitUnrecognizedArgument(token)
+  if (cmd === 'diff') return `error: invalid option: ${token}\n${DIFF_USAGE_LINE}`
   return token.startsWith('--') ? unknownLongOption(token) : unknownShortOption(token)
+}
+
+/**
+ * Позиционный аргумент, который git принимает, а раздел 3 не разбирает: выражение ревизии вне
+ * грамматики раздела (`HEAD@{1}`, `HEAD^2`, `HEAD~1..`, `HEAD:файл`) или форма пути (`./файл`,
+ * `../x`, глоб, магия pathspec). `null` — аргумент обычный: если его не нашли, это настоящая
+ * ошибка git (`nosuch`, `HEAD~3` за корнем, `a..b` с несуществующими именами).
+ */
+function foreignArgument(token: string): boolean {
+  return classifyRefToken(token, INSPECT_REF_GRAMMAR) === 'foreign' || classifyPathspec(token, { globs: false }) === 'foreign'
 }
 
 // ---------- разбор одной позиционной ссылки: ref / A..B / A...B / pathspec / не найдено ----------
@@ -157,6 +171,8 @@ function handleLog(state: InspectState, tokens: string[]): { state: InspectState
   if (positionals.length > 1) return fail(state, ie.optionOutOfScope(`git log ${positionals.join(' ')}`, LOG_ALLOWED))
   if (pathTokens.length > 1) return fail(state, ie.optionOutOfScope(`git log -- ${pathTokens.join(' ')}`, LOG_ALLOWED))
 
+  const foreignPath = pathTokens.find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignPath !== undefined) return fail(state, ie.optionOutOfScope(`git log -- ${foreignPath}`, LOG_ALLOWED))
   let chain: string[]
   let pathFilter: string | null = pathTokens.length === 1 ? pathTokens[0] : null
 
@@ -166,6 +182,7 @@ function handleLog(state: InspectState, tokens: string[]): { state: InspectState
     if (resolved.kind === 'tripleDot') return fail(state, ie.optionOutOfScope(`git log ${token}`, LOG_ALLOWED))
     if (resolved.kind === 'range') chain = rangeCommits(state, resolved.fromId, resolved.toId)
     else if (resolved.kind === 'ref') chain = commitChain(state, resolved.id)
+    else if (foreignArgument(token)) return fail(state, ie.optionOutOfScope(`git log ${token}`, LOG_ALLOWED))
     else if (pathTokens.length === 0 && has(state.working, token)) {
       pathFilter = token
       chain = commitChain(state, currentTip(state))
@@ -224,6 +241,9 @@ function handleDiff(state: InspectState, tokens: string[]): { state: InspectStat
 
   if (pathTokens.length > 1) return fail(state, ie.optionOutOfScope(`git diff -- ${pathTokens.join(' ')}`, DIFF_ALLOWED))
   const explicitPathspec = pathTokens.length === 1 ? pathTokens[0] : null
+  if (explicitPathspec !== null && classifyPathspec(explicitPathspec, { globs: false }) === 'foreign') {
+    return fail(state, ie.optionOutOfScope(`git diff -- ${explicitPathspec}`, DIFF_ALLOWED))
+  }
 
   if (staged && positionals.length >= 2) return fail(state, DIFF_USAGE_LINE)
 
@@ -247,6 +267,8 @@ function handleDiff(state: InspectState, tokens: string[]): { state: InspectStat
       if (staged) return fail(state, ie.optionOutOfScope(`git diff --staged ${token}`, DIFF_ALLOWED))
       left = commitTree(state, resolved.id)
       right = trackedWorking(state)
+    } else if (foreignArgument(token)) {
+      return fail(state, ie.optionOutOfScope(`git diff ${token}`, DIFF_ALLOWED))
     } else if (pathTokens.length === 0 && has(state.working, token)) {
       pathFilter = token
       const pair = diffPair(state, staged)
@@ -300,7 +322,7 @@ function handleShow(state: InspectState, tokens: string[]): { state: InspectStat
     const resolved = resolveRefOrRange(state, token)
     if (resolved.kind === 'ref') id = resolved.id
     else if (resolved.kind === 'range' || resolved.kind === 'tripleDot') return fail(state, ie.optionOutOfScope(`git show ${token}`, SHOW_ALLOWED))
-    else if (has(state.working, token)) return fail(state, ie.optionOutOfScope(`git show ${token}`, SHOW_ALLOWED))
+    else if (has(state.working, token) || foreignArgument(token)) return fail(state, ie.optionOutOfScope(`git show ${token}`, SHOW_ALLOWED))
     else return fail(state, ambiguousArgument(token))
   }
 
