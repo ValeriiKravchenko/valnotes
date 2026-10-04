@@ -56,9 +56,11 @@ import {
   RESET_MODE_FLAGS,
   RESET_USAGE,
   REVERT_USAGE,
+  classifyUndoOption,
 } from './undoScope'
 import { classifySection2Option } from './branchScope'
 import { classifySection3Option } from './inspectScope'
+import { classifyPathspec, classifyRefToken, gitUnrecognizedArgument, UNDO_REF_GRAMMAR } from './outOfScopeForms'
 import type { ShellToken } from './shell'
 import { shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
@@ -94,6 +96,9 @@ function addPaths(state: UndoState, paths: string[]): { state: UndoState; result
     return ok({ ...state, index: nextIndex }, '')
   }
 
+  // Форма пути, которую git принимает, а раздел 4 не разбирает ("./x", "../x", глоб, магия pathspec).
+  const foreignPath = paths.find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignPath !== undefined) return fail(state, ue.optionOutOfScope(`git add ${foreignPath}`, 'git add <файл>, git add .'))
   const head = headTree(state)
   const knownToGit = new Set<string>([...Object.keys(state.working), ...Object.keys(state.index), ...Object.keys(head)])
   const notFound = paths.find((f) => !knownToGit.has(f))
@@ -220,14 +225,6 @@ function handleStatus(state: UndoState, args: string[]): { state: UndoState; res
 
 const LOG_ALLOWED = 'git log, git log --oneline'
 
-function unknownLongOption(token: string): string {
-  const bare = token.split('=')[0]
-  return `error: unknown option \`${bare.slice(2)}'`
-}
-function unknownShortOption(token: string): string {
-  return `error: unknown switch \`${token.slice(1)}'`
-}
-
 function onelineEntry(state: UndoState, id: string): string {
   return `${id} ${getCommit(state, id)?.message ?? ''}`
 }
@@ -247,6 +244,9 @@ function commitChainFrom(state: UndoState, id: string): string[] {
 }
 
 function handleLog(state: UndoState, args: string[]): { state: UndoState; result: CommandResult } {
+  // "--" отделяет пути от ревизий: git принимает, раздел 4 историю по путям не разбирает.
+  const separatorAt = args.indexOf('--')
+  if (separatorAt !== -1) return fail(state, ue.optionOutOfScope(`git log ${args.slice(separatorAt).join(' ')}`, LOG_ALLOWED))
   let oneline = false
   const positionals: string[] = []
   for (const t of args) {
@@ -257,7 +257,7 @@ function handleLog(state: UndoState, args: string[]): { state: UndoState; result
     if (t.startsWith('-')) {
       const cls = classifySection3Option('log', ['--oneline'], t)
       if (cls === 'outOfScope') return fail(state, ue.optionOutOfScope(`git log ${t}`, LOG_ALLOWED))
-      if (cls === 'unknown') return fail(state, t.startsWith('--') ? unknownLongOption(t) : unknownShortOption(t))
+      if (cls === 'unknown') return fail(state, gitUnrecognizedArgument(t))
       continue
     }
     positionals.push(t)
@@ -288,6 +288,9 @@ function handleBranchPositional(state: UndoState, args: string[]): { state: Undo
   if (has(state.branches, name)) return fail(state, `fatal: a branch named '${name}' already exists`)
   let startId: string
   if (args.length === 2) {
+    if (classifyRefToken(args[1], UNDO_REF_GRAMMAR) === 'foreign') {
+      return fail(state, ue.optionOutOfScope(`git branch ${name} ${args[1]}`, BRANCH_ALLOWED))
+    }
     const resolved = resolveRef(state, args[1])
     if (resolved === null) return fail(state, `fatal: not a valid object name: '${args[1]}'`)
     startId = resolved
@@ -368,6 +371,9 @@ function handleReset(state: UndoState, args: string[]): { state: UndoState; resu
     }
     if (isResetQuietFlag(t)) return fail(state, ue.optionOutOfScope(`git reset ${t}`, RESET_ALLOWED))
     if (isResetMergeOrKeepFlag(t)) return fail(state, ue.optionOutOfScope(`git reset ${t}`, RESET_ALLOWED))
+    // Опция, которую git принимает, а раздел 4 не разбирает, — отказ; заведомо несуществующая
+    // получает ниже настоящую ошибку git.
+    if (classifyUndoOption('reset', RESET_MODE_FLAGS, t) === 'refuse') return fail(state, ue.optionOutOfScope(`git reset ${t}`, RESET_ALLOWED))
     // Настоящий git на любой другой нераспознанный (фейковый ИЛИ реальный-но-нереализованный)
     // флаг даёт один и тот же ответ — "error: unknown option/switch" + буквальный usage-блок
     // (сверено напрямую: `git reset --bogus`/`git reset -Z`).
@@ -376,6 +382,14 @@ function handleReset(state: UndoState, args: string[]): { state: UndoState; resu
   }
   const effectiveMode: ResetMode = mode ?? 'mixed'
 
+  // Ссылка вне грамматики раздела 4 (HEAD^, HEAD~~, ветка~N, HEAD@{N}) и формы путей (./x, ../x,
+  // глоб, магия pathspec) git принимает, а раздел 4 не разбирает: отказ, а не выдуманное
+  // «ambiguous argument». Первый позиционный до "--" — ссылка или путь, остальные — пути.
+  const [firstArg, ...restArgs] = positionalBeforeDD
+  const foreignFirst =
+    firstArg !== undefined && (classifyRefToken(firstArg, UNDO_REF_GRAMMAR) === 'foreign' || classifyPathspec(firstArg, { globs: false }) === 'foreign')
+  const foreignToken = foreignFirst ? firstArg : [...restArgs, ...afterDD].find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignToken !== undefined) return fail(state, ue.optionOutOfScope(`git reset ${foreignToken}`, RESET_ALLOWED))
   const classified = classifyResetPositionals(state, positionalBeforeDD, ddAt !== -1)
   if ('fatal' in classified) return fail(state, classified.fatal)
   const { refId, paths: refPaths } = classified
@@ -424,23 +438,29 @@ function handleRevert(state: UndoState, args: string[]): { state: UndoState; res
   const flags = args.filter((a) => a.startsWith('-'))
   const positionals = args.filter((a) => !a.startsWith('-'))
 
+  let otherFlag: string | undefined
   for (const f of flags) {
     if (f === '--no-edit') continue
     if (isRevertNoCommitFlag(f)) return fail(state, ue.revertNoCommitOutOfScope)
     if (isRevertMainlineFlag(f)) return fail(state, ue.revertMainlineOutOfScope)
     if (isRevertConflictFlowFlag(f)) return fail(state, ue.revertConflictFlowOutOfScope(f))
-    // Настоящий git на любой другой флаг (фейковый ИЛИ реальный-но-нереализованный-и-неназванный)
-    // печатает ровно этот usage-блок — см. шапку undoScope.ts, REVERT_USAGE.
-    return fail(state, REVERT_USAGE)
+    otherFlag ??= f
   }
 
   if (!positionals.length) return fail(state, REVERT_USAGE, ru.undo.explain.revertNeedsCommit)
+  // Остальные флаги проверяются ПОСЛЕ разбора позиционных: без коммита настоящий git на любой флаг
+  // печатает один usage-блок (его тренажёр воспроизводит выше). С коммитом флаг, который git
+  // принимает (-e, -s, -X, --strategy …), — отказ; заведомо несуществующий — usage, как у git.
+  if (otherFlag !== undefined) {
+    if (classifyUndoOption('revert', ['--no-edit'], otherFlag) === 'unknown') return fail(state, REVERT_USAGE)
+    return fail(state, ue.optionOutOfScope(`git revert ${otherFlag}`, REVERT_ALLOWED))
+  }
   if (positionals.length > 1) return fail(state, ue.optionOutOfScope(`git revert ${positionals.join(' ')}`, REVERT_ALLOWED))
 
   const ref = positionals[0]
   const targetId = resolveRef(state, ref)
   if (targetId === null) {
-    if (looksLikeUnimplementedRevisionExpression(ref)) return fail(state, ue.optionOutOfScope(`git revert ${ref}`, REVERT_ALLOWED))
+    if (looksLikeUnimplementedRevisionExpression(ref) || classifyRefToken(ref, UNDO_REF_GRAMMAR) === 'foreign') return fail(state, ue.optionOutOfScope(`git revert ${ref}`, REVERT_ALLOWED))
     return fail(state, `fatal: bad revision '${ref}'`)
   }
 

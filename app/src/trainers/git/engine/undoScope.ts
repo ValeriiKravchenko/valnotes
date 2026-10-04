@@ -22,6 +22,8 @@
 // --bogus`, `git revert -s` без остального ввода и `git revert` без
 // аргументов дают ДОСЛОВНО один и тот же 24-строчный блок; см. отчёт).
 // ============================================================
+import { classifyOptionToken } from './outOfScopeForms'
+
 export { GLOBAL_GIT_OPTIONS, isGlobalGitOption, REAL_GIT_COMMANDS, gitNotACommand } from './branchScope'
 
 /** git-подкоманды, которые раздел 4 реализует буквально. */
@@ -128,4 +130,82 @@ export function isResetQuietFlag(flag: string): boolean {
 /** `--merge`/`--keep` (target.md, часть VI, «Что НЕ входит»). */
 export function isResetMergeOrKeepFlag(flag: string): boolean {
   return flag === '--merge' || flag === '--keep'
+}
+
+/**
+ * Полные наборы опций reset/revert, которые настоящий git принимает: вывод `git <команда> -h`
+ * плюс `git <команда> --git-completion-helper` (сверено на git 2.53.0, 04.10.2026). Наборы
+ * исчерпывающие: опция вне них и вне форм `--no-<имя>` заведомо не существует.
+ */
+const VERIFIED_UNDO_OPTIONS: Record<'reset' | 'revert', readonly string[]> = {
+  reset: [
+    '--hard',
+    '--intent-to-add',
+    '--inter-hunk-context',
+    '--keep',
+    '--merge',
+    '--mixed',
+    '--no-intent-to-add',
+    '--no-patch',
+    '--no-pathspec-file-nul',
+    '--no-pathspec-from-file',
+    '--no-quiet',
+    '--no-recurse-submodules',
+    '--no-refresh',
+    '--patch',
+    '--pathspec-file-nul',
+    '--pathspec-from-file',
+    '--quiet',
+    '--recurse-submodules',
+    '--refresh',
+    '--soft',
+    '--unified',
+    '-N',
+    '-U',
+    '-p',
+    '-q',
+  ],
+  revert: [
+    '--abort',
+    '--cleanup',
+    '--commit',
+    '--continue',
+    '--edit',
+    '--gpg-sign',
+    '--mainline',
+    '--no-cleanup',
+    '--no-commit',
+    '--no-edit',
+    '--no-gpg-sign',
+    '--no-mainline',
+    '--no-reference',
+    '--no-rerere-autoupdate',
+    '--no-signoff',
+    '--no-strategy',
+    '--no-strategy-option',
+    '--quit',
+    '--reference',
+    '--rerere-autoupdate',
+    '--signoff',
+    '--skip',
+    '--strategy',
+    '--strategy-option',
+    '-S',
+    '-X',
+    '-e',
+    '-m',
+    '-n',
+    '-s',
+  ],
+}
+
+/** `scope` — раздел разбирает; `refuse` — git принимает, раздел нет; `unknown` — такой опции в git нет. */
+export function classifyUndoOption(cmd: 'reset' | 'revert', scopeFlags: readonly string[], flag: string): 'scope' | 'refuse' | 'unknown' {
+  const bare = flag.startsWith('--') ? flag.split('=')[0] : flag
+  const verified = VERIFIED_UNDO_OPTIONS[cmd]
+  const cls = classifyOptionToken(bare, { inScope: scopeFlags, verifiedReal: verified, exhaustive: true })
+  if (cls !== 'unknown') return cls
+  if (bare.startsWith('--no-') && verified.includes('--' + bare.slice('--no-'.length))) return 'refuse'
+  if (bare.startsWith('--') && bare.length > 2 && verified.some((o) => o.startsWith(bare))) return 'refuse'
+  return 'unknown'
 }
