@@ -43,6 +43,7 @@ import { classifySection2Option, gitNotACommand, isGlobalGitOption, isSection2Co
 import type { ShellToken } from './shell'
 import { shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
+import { classifyPathspec } from './outOfScopeForms'
 import { has } from './util'
 import { ru } from '../locales/ru'
 
@@ -467,6 +468,11 @@ function checkoutByName(state: BranchingState, name: string, pathOnly: boolean):
   // git" — ровно тот же текст, что и для полностью неизвестного пути; наоборот, путь, который
   // есть в индексе, но ещё не в HEAD (свежий `git add` до первого коммита этого файла), успешно
   // восстанавливается — тоже сверено напрямую.
+  // Форма пути, которую git принимает, а шаг A не разбирает ("./x", "../x", глоб, магия pathspec,
+  // "<ревизия>:<путь>"): отказ, а не выдуманное «did not match».
+  if (classifyPathspec(name, { globs: false }) === 'foreign' || name.includes(':')) {
+    return fail(state, be.optionOutOfScope(`git checkout ${name}`, 'git checkout <ветка>, git checkout -b <имя>'), null)
+  }
   const knownPaths = new Set<string>(Object.keys(state.index))
   const targets = name === '.' ? [...knownPaths].sort() : knownPaths.has(name) ? [name] : null
   if (targets) {
@@ -584,7 +590,7 @@ function handleMerge(state: BranchingState, args: string[]): { state: BranchingS
   }
 
   const name = positional[0]
-  if (looksLikeRevisionExpression(name)) {
+  if (looksLikeRevisionExpression(name) || name.includes(':')) {
     return fail(state, be.revisionExpressionOutOfScope(`git merge ${name}`), null)
   }
   if (!has(state.branches, name)) {
@@ -715,6 +721,8 @@ const ADD_NOTHING_SPECIFIED =
   "Nothing specified, nothing added.\nhint: Maybe you wanted to say 'git add .'?\n" +
   'hint: Disable this message with "git config set advice.addEmptyPathspec false"'
 
+const ADD_PATHS_ALLOWED = 'git add <файл>, git add .'
+
 /** `paths`, о которых известно, что они — не флаги (см. handleAdd: обычная позиция или всё, что после "--"). */
 function addPaths(state: BranchingState, paths: string[]): { state: BranchingState; result: CommandResult } {
   if (!paths.length) return ok(state, ADD_NOTHING_SPECIFIED, null)
@@ -734,6 +742,12 @@ function addPaths(state: BranchingState, paths: string[]): { state: BranchingSta
   // рабочем дереве: `git add <удалённый файл>` (файл был в HEAD/индексе, но убран из рабочего
   // дерева) реально стейджит удаление, а не отказывает (сверено напрямую, git 2.53.0). Та же
   // логика, что и у "git add ." двумя строками выше.
+  // Форма пути, которую git принимает, а шаг A не разбирает ("./x", "../x", глоб, магия pathspec):
+  // отказ, а не выдуманное «did not match». Глоб здесь не разбирается (в отличие от раздела 1).
+  const foreignPath = paths.find((p) => classifyPathspec(p, { globs: false }) === 'foreign')
+  if (foreignPath !== undefined) {
+    return fail(state, be.optionOutOfScope(`git add ${foreignPath}`, ADD_PATHS_ALLOWED), null)
+  }
   const head = headTree(state)
   const knownToGit = new Set<string>([...Object.keys(state.working), ...Object.keys(state.index), ...Object.keys(head)])
   const notFound = paths.find((f) => !knownToGit.has(f))
