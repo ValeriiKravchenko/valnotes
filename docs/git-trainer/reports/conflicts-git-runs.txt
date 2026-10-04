@@ -1,0 +1,5078 @@
+# Прогоны git 2.53.0, 27.09.2026: конфликты для части XI target.md.
+# LC_ALL=C, GIT_PAGER=cat, без глобального и системного конфига; log.decorate=short (как на терминале, см. П8.13).
+# Каталог прогона в выводе заменён на /work. Автор и коммиттер: Валера <valera@example.com>.
+# Каждая команда сдвигает часы на минуту от Mon Jun 1 10:00:00 2026 +0300; хэши воспроизводимы только внутри файла.
+# GIT_EDITOR=true: там, где git открыл бы редактор (commit без -m, --continue), принимается предложенное сообщение без правки.
+#   Что было бы в редакторе, показывает cat .git/MERGE_MSG перед такой командой.
+# put ФАЙЛ ТЕКСТ = printf '%s' ТЕКСТ > ФАЙЛ: без перевода строки в конце, как файлы в source.html.
+# Подготовка обстановки (seed разделов) выполнена тихо и в файл не выписана; обстановка описана в заголовке блока.
+# <CR> — возврат каретки (\r) в выводе git (прогресс rebase).
+# Формат: "$ команда", вывод (stdout+stderr), [exit код].
+
+===== К1.1. MERGE: конфликт и осмотр (обстановка: раздел 2 после кнопки «Смоделировать конфликт слияния»)
+$ git log --oneline --all --graph
+* 893355f (HEAD -> master) сузить отступы
+| * 4de41bc (conflict-demo) conflict-demo: увеличить шрифт
+|/  
+* 8f17139 Первый коммит: базовые стили
+[exit 0]
+
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat style.css
+body { background: white; color: black; }
+<<<<<<< HEAD
+/* правка в текущей ветке: сузили отступы */
+=======
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> conflict-demo
+[exit 0]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UU style.css
+[exit 0]
+
+$ git diff
+diff --cc style.css
+index 8bd1cb3,f050fef..0000000
+--- a/style.css
++++ b/style.css
+@@@ -1,2 -1,2 +1,6 @@@
+  body { background: white; color: black; }
+- /* правка в текущей ветке: сузили отступы */
+ -/* правка в conflict-demo: увеличили шрифт */
+++<<<<<<< HEAD
+++/* правка в текущей ветке: сузили отступы */
+++=======
+++/* правка в conflict-demo: увеличили шрифт */
+++>>>>>>> conflict-demo
+[exit 0]
+
+$ git diff --staged
+* Unmerged path style.css
+[exit 0]
+
+$ git diff HEAD
+diff --git a/style.css b/style.css
+index 8bd1cb3..4d59a53 100644
+--- a/style.css
++++ b/style.css
+@@ -1,2 +1,6 @@
+ body { background: white; color: black; }
+-/* правка в текущей ветке: сузили отступы */
+\ No newline at end of file
++<<<<<<< HEAD
++/* правка в текущей ветке: сузили отступы */
++=======
++/* правка в conflict-demo: увеличили шрифт */
++>>>>>>> conflict-demo
+[exit 0]
+
+$ git ls-files --stage
+100644 da058b3f3fae9701143452b6cdfb563e6d990c6b 1	style.css
+100644 8bd1cb3e8574bc48c1d4ca6ba6212497b1c9f743 2	style.css
+100644 f050fef537176d0f9dd4adcde62b222fdbcfd05c 3	style.css
+[exit 0]
+
+$ git log --oneline --all --graph
+* 893355f (HEAD -> master) сузить отступы
+| * 4de41bc (conflict-demo) conflict-demo: увеличить шрифт
+|/  
+* 8f17139 Первый коммит: базовые стили
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Merge branch 'conflict-demo'
+
+# Conflicts:
+#	style.css
+[exit 0]
+
+$ ls .git | grep -E 'MERGE|HEAD'
+AUTO_MERGE
+HEAD
+MERGE_HEAD
+MERGE_MODE
+MERGE_MSG
+ORIG_HEAD
+[exit 0]
+
+$ git branch
+  conflict-demo
+* master
+[exit 0]
+
+===== К1.2. MERGE: что запрещено посреди конфликта
+$ git commit -m 'готово'
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git merge --continue
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git checkout conflict-demo
+error: you need to resolve your current index first
+style.css: needs merge
+[exit 1]
+
+$ git switch conflict-demo
+fatal: cannot switch branch while merging
+Consider "git merge --quit" or "git worktree add".
+[exit 128]
+
+$ git merge conflict-demo
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git stash
+error: could not write index
+style.css: needs merge
+[exit 1]
+
+$ git revert HEAD
+error: Reverting is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: revert failed
+[exit 128]
+
+$ git cherry-pick conflict-demo
+error: Cherry-picking is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git rebase conflict-demo
+style.css: needs merge
+error: cannot rebase: You have unstaged changes.
+error: additionally, your index contains uncommitted changes.
+error: Please commit or stash them.
+[exit 1]
+
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git revert --abort
+error: no cherry-pick or revert in progress
+fatal: revert failed
+[exit 128]
+
+$ git cherry-pick --abort
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+$ git rebase --abort
+fatal: no rebase in progress
+[exit 128]
+
+$ git checkout -- style.css
+error: path 'style.css' is unmerged
+[exit 1]
+
+$ git restore style.css
+error: path 'style.css' is unmerged
+[exit 1]
+
+===== К1.3. MERGE: --abort
+$ git merge --abort
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+/* правка в текущей ветке: сузили отступы */[exit 0]
+
+$ git log --oneline --all --graph
+* 893355f (HEAD -> master) сузить отступы
+| * 4de41bc (conflict-demo) conflict-demo: увеличить шрифт
+|/  
+* 8f17139 Первый коммит: базовые стили
+[exit 0]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+$ git merge --continue
+fatal: There is no merge in progress (MERGE_HEAD missing).
+[exit 128]
+
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git merge --abort; git status --short
+[exit 0]
+
+===== К1.4. MERGE: разрешение правкой файла, add, commit
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put style.css $'body { background: white; color: black; }\n/* правка в текущей ветке: сузили отступы */\n/* правка в conflict-demo: увеличили шрифт */'
+[exit 0]
+
+$ git status --short
+UU style.css
+[exit 0]
+
+$ git diff
+diff --cc style.css
+index 8bd1cb3,f050fef..0000000
+--- a/style.css
++++ b/style.css
+@@@ -1,2 -1,2 +1,3 @@@
+  body { background: white; color: black; }
+- /* правка в текущей ветке: сузили отступы */
+++/* правка в текущей ветке: сузили отступы */
++ /* правка в conflict-demo: увеличили шрифт */
+[exit 0]
+
+$ git add style.css
+[exit 0]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+[exit 0]
+
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git diff --staged
+diff --git a/style.css b/style.css
+index 8bd1cb3..a02034d 100644
+--- a/style.css
++++ b/style.css
+@@ -1,2 +1,3 @@
+ body { background: white; color: black; }
+-/* правка в текущей ветке: сузили отступы */
+\ No newline at end of file
++/* правка в текущей ветке: сузили отступы */
++/* правка в conflict-demo: увеличили шрифт */
+\ No newline at end of file
+[exit 0]
+
+$ git commit
+[master 25bf369] Merge branch 'conflict-demo'
+[exit 0]
+
+$ git log --oneline --all --graph
+*   25bf369 (HEAD -> master) Merge branch 'conflict-demo'
+|\  
+| * 4de41bc (conflict-demo) conflict-demo: увеличить шрифт
+* | 893355f сузить отступы
+|/  
+* 8f17139 Первый коммит: базовые стили
+[exit 0]
+
+$ git log -1
+commit 25bf369f5dc6c864c4dce86e25cfb17c6beb32ee (HEAD -> master)
+Merge: 893355f 4de41bc
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:48:00 2026 +0300
+
+    Merge branch 'conflict-demo'
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К1.5. MERGE: завершение через git merge --continue (новая копия обстановки)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put style.css $'body { background: white; color: black; }\n/* правка в conflict-demo: увеличили шрифт */'
+[exit 0]
+
+$ git add style.css
+[exit 0]
+
+$ git merge --continue
+[master 3d50d52] Merge branch 'conflict-demo'
+[exit 0]
+
+$ git log --oneline --graph
+*   3d50d52 (HEAD -> master) Merge branch 'conflict-demo'
+|\  
+| * 071c5eb (conflict-demo) conflict-demo: увеличить шрифт
+* | 0b9573b сузить отступы
+|/  
+* e856066 Первый коммит: базовые стили
+[exit 0]
+
+===== К1.6. MERGE: commit -m после add (новая копия)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put style.css $'body { background: white; color: black; }\n/* правка в текущей ветке: сузили отступы */'
+[exit 0]
+
+$ git add style.css
+[exit 0]
+
+$ git commit -m 'Слить conflict-demo'
+[master 98678ef] Слить conflict-demo
+[exit 0]
+
+$ git log --oneline --graph
+*   98678ef (HEAD -> master) Слить conflict-demo
+|\  
+| * 04ae024 (conflict-demo) conflict-demo: увеличить шрифт
+* | 1351b1d сузить отступы
+|/  
+* b55ec81 Первый коммит: базовые стили
+[exit 0]
+
+===== К1.7. MERGE: git add с оставленными метками — git не проверяет (новая копия)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git add style.css
+[exit 0]
+
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git commit -m 'слияние с метками'
+[master f8605af] слияние с метками
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+<<<<<<< HEAD
+/* правка в текущей ветке: сузили отступы */
+=======
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> conflict-demo
+[exit 0]
+
+===== К1.8. MERGE: git commit -a посреди конфликта (новая копия)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git commit -am 'слить всё'
+[master 42cf3a4] слить всё
+[exit 0]
+
+$ git log --oneline --graph
+*   42cf3a4 (HEAD -> master) слить всё
+|\  
+| * 5a1d306 (conflict-demo) conflict-demo: увеличить шрифт
+* | f3e6820 сузить отступы
+|/  
+* 8908d93 Первый коммит: базовые стили
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+<<<<<<< HEAD
+/* правка в текущей ветке: сузили отступы */
+=======
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> conflict-demo
+[exit 0]
+
+===== К1.9. MERGE: checkout --ours / --theirs / -m (новая копия)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git checkout --theirs style.css
+Updated 1 path from the index
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+/* правка в conflict-demo: увеличили шрифт */[exit 0]
+
+$ git status --short
+UU style.css
+[exit 0]
+
+$ git checkout --ours style.css
+Updated 1 path from the index
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+/* правка в текущей ветке: сузили отступы */[exit 0]
+
+$ git checkout -m style.css
+Recreated 1 merge conflict
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+<<<<<<< ours
+/* правка в текущей ветке: сузили отступы */
+=======
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> theirs
+[exit 0]
+
+$ git restore --theirs style.css
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+/* правка в conflict-demo: увеличили шрифт */[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+===== К1.10. MERGE: reset --hard и reset (mixed) посреди конфликта (новая копия)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git reset --hard
+HEAD is now at bf25056 сузить отступы
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ ls .git | grep -E 'MERGE' ; echo ---
+---
+[exit 0]
+
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git reset
+Unstaged changes after reset:
+M	style.css
+[exit 0]
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ cat style.css
+body { background: white; color: black; }
+<<<<<<< HEAD
+/* правка в текущей ветке: сузили отступы */
+=======
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> conflict-demo
+[exit 0]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+$ git checkout -- style.css; git status --short
+[exit 0]
+
+===== К1.11. MERGE: несохранённая правка другого файла (S2-61/62) и правка самого файла (новая копия + notes.txt)
+$ put notes.txt 'заметки, правка'; git status --short
+ M notes.txt
+[exit 0]
+
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   notes.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git status --short; cat notes.txt; echo; cat style.css
+ M notes.txt
+заметки, правка
+body { background: white; color: black; }
+/* правка в текущей ветке: сузили отступы */[exit 0]
+
+$ put style.css 'body { }'; git merge conflict-demo
+error: Your local changes to the following files would be overwritten by merge:
+	style.css
+Please commit your changes or stash them before you merge.
+Aborting
+Merge with strategy ort failed.
+[exit 2]
+
+$ git checkout -- style.css notes.txt
+[exit 0]
+
+===== К1.12. MERGE: два файла, один конфликтует, другой слит сам (новая копия + index.html в обеих ветках)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Changes to be committed:
+	new file:   index.html
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+[exit 0]
+
+$ git status --short
+A  index.html
+UU style.css
+[exit 0]
+
+===== К1.13. MERGE: modify/delete — ветка удалила файл, другая изменила (новая копия)
+$ git log --oneline --all --graph
+* e5eb59c (conflict-demo) удалить стили
+* 558fd79 conflict-demo: увеличить шрифт
+| * e4817cf (HEAD -> master) сузить отступы
+|/  
+* 51f8545 Первый коммит: базовые стили
+[exit 0]
+
+$ git merge conflict-demo
+CONFLICT (modify/delete): style.css deleted in conflict-demo and modified in HEAD.  Version HEAD of style.css left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add/rm <file>..." as appropriate to mark resolution)
+	deleted by them: style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UD style.css
+[exit 0]
+
+$ ls
+style.css
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+===== К1.14. MERGE: стиль меток diff3 (настройка merge.conflictStyle; по умолчанию — merge) (новая копия)
+$ git -c merge.conflictStyle=diff3 merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat style.css
+<<<<<<< HEAD
+body { background: white; color: black; }
+/* правка в текущей ветке: сузили отступы */
+||||||| 1a5ccdb
+body { background: white; color: black; }
+=======
+body { background: white; color: black; }
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> conflict-demo
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+===== К1.15. MERGE: git checkout -b посреди конфликта — ветка создаётся, состояние слияния теряется (новая копия)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git checkout -b other
+Switched to a new branch 'other'
+[exit 0]
+
+$ ls .git | grep -E 'MERGE'; echo ---
+---
+[exit 0]
+
+$ git status
+On branch other
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+$ git commit -m x
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git reset -q --hard; git status --short; git log --oneline --all --graph
+* d305fe2 (HEAD -> other, master) сузить отступы
+| * 5c28d4a (conflict-demo) conflict-demo: увеличить шрифт
+|/  
+* 4ed880b Первый коммит: базовые стили
+[exit 0]
+
+===== К2.1. REVERT: конфликт и осмотр (обстановка: раздел 4 + коммит «красный текст» в style.css, S4-04)
+$ git log --oneline
+417c7b3 (HEAD -> master) красный текст
+6221c20 Добавить структуру страницы
+1bfca16 сменить шрифт на Comic Sans
+f96a2b5 Добавить стили
+[exit 0]
+
+$ git revert 1bfca16
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 1bfca16... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ cat style.css
+<<<<<<< HEAD
+body { color: red; }
+=======
+body { color: black; }
+>>>>>>> parent of 1bfca16 (сменить шрифт на Comic Sans)
+[exit 0]
+
+$ git status
+On branch master
+You are currently reverting commit 1bfca16.
+  (fix conflicts and run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UU style.css
+[exit 0]
+
+$ git diff
+diff --cc style.css
+index 307d246,fa833f1..0000000
+--- a/style.css
++++ b/style.css
+@@@ -1,1 -1,1 +1,5 @@@
+- body { color: red; }
+ -body { color: black; }
+++<<<<<<< HEAD
+++body { color: red; }
+++=======
+++body { color: black; }
+++>>>>>>> parent of 1bfca16 (сменить шрифт на Comic Sans)
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Revert "сменить шрифт на Comic Sans"
+
+This reverts commit 1bfca162f3187aecbd31803a3c118a9d2b5ce9f3.
+
+# Conflicts:
+#	style.css
+[exit 0]
+
+$ ls .git | grep -E 'MERGE|REVERT|HEAD|sequencer'
+AUTO_MERGE
+HEAD
+MERGE_MSG
+REVERT_HEAD
+[exit 0]
+
+$ git log --oneline
+417c7b3 (HEAD -> master) красный текст
+6221c20 Добавить структуру страницы
+1bfca16 сменить шрифт на Comic Sans
+f96a2b5 Добавить стили
+[exit 0]
+
+===== К2.2. REVERT: что запрещено посреди конфликта
+$ git revert --continue
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git commit -m 'отмена'
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git merge master
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git revert HEAD
+error: Reverting is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: revert failed
+[exit 128]
+
+$ git cherry-pick HEAD~1
+error: Cherry-picking is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git checkout HEAD~1
+error: you need to resolve your current index first
+style.css: needs merge
+[exit 1]
+
+$ git stash
+error: could not write index
+style.css: needs merge
+[exit 1]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+===== К2.3. REVERT: --abort
+$ git revert --abort
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ cat style.css
+body { color: red; }[exit 0]
+
+$ git log --oneline
+417c7b3 (HEAD -> master) красный текст
+6221c20 Добавить структуру страницы
+1bfca16 сменить шрифт на Comic Sans
+f96a2b5 Добавить стили
+[exit 0]
+
+$ git revert --abort
+error: no cherry-pick or revert in progress
+fatal: revert failed
+[exit 128]
+
+$ git revert --continue
+error: no cherry-pick or revert in progress
+fatal: revert failed
+[exit 128]
+
+===== К2.4. REVERT: разрешение, add, --continue
+$ git revert 1bfca16
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 1bfca16... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git checkout --theirs style.css; cat style.css
+Updated 1 path from the index
+body { color: black; }[exit 0]
+
+$ git checkout --ours style.css; cat style.css
+Updated 1 path from the index
+body { color: red; }[exit 0]
+
+$ put style.css 'body { color: black; }'
+[exit 0]
+
+$ git add style.css
+[exit 0]
+
+$ git status
+On branch master
+You are currently reverting commit 1bfca16.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+$ git revert --continue
+[master 71ad9ab] Revert "сменить шрифт на Comic Sans"
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git log --oneline
+71ad9ab (HEAD -> master) Revert "сменить шрифт на Comic Sans"
+417c7b3 красный текст
+6221c20 Добавить структуру страницы
+1bfca16 сменить шрифт на Comic Sans
+f96a2b5 Добавить стили
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К2.5. REVERT: разрешение, add, commit без -m (новая копия)
+$ git revert 4a32e65
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 4a32e65... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ put style.css 'body { color: black; }'
+[exit 0]
+
+$ git add style.css
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Revert "сменить шрифт на Comic Sans"
+
+This reverts commit 4a32e65c7625ab1cb29f0ffc27cc9a166ec7aec9.
+
+# Conflicts:
+#	style.css
+[exit 0]
+
+$ git commit
+[master 5a9a476] Revert "сменить шрифт на Comic Sans"
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git log -1
+commit 5a9a4760f1e0e27958e29a96b837c964976dddfc (HEAD -> master)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 13:18:00 2026 +0300
+
+    Revert "сменить шрифт на Comic Sans"
+    
+    This reverts commit 4a32e65c7625ab1cb29f0ffc27cc9a166ec7aec9.
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К2.6. REVERT: разрешение, итог совпал с HEAD (новая копия)
+$ git revert 3d2fad6
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 3d2fad6... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git checkout --ours style.css; git add style.css
+Updated 1 path from the index
+[exit 0]
+
+$ git status
+On branch master
+You are currently reverting commit 3d2fad6.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git revert --continue
+On branch master
+You are currently reverting commit 3d2fad6.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+nothing to commit, working tree clean
+[exit 1]
+
+$ git commit -m x
+On branch master
+You are currently reverting commit 3d2fad6.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+nothing to commit, working tree clean
+[exit 1]
+
+$ git revert --skip
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+4783772 (HEAD -> master) красный текст
+736bbea Добавить структуру страницы
+3d2fad6 сменить шрифт на Comic Sans
+c0318ca Добавить стили
+[exit 0]
+
+===== К2.7. REVERT: --skip и --quit (новая копия)
+$ git revert 3fb3732
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 3fb3732... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git revert --skip
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+a7cff9a (HEAD -> master) красный текст
+03a952d Добавить структуру страницы
+3fb3732 сменить шрифт на Comic Sans
+137a3e6 Добавить стили
+[exit 0]
+
+$ git revert 3fb3732
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 3fb3732... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git revert --quit
+[exit 0]
+
+$ git status
+On branch master
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ cat style.css
+<<<<<<< HEAD
+body { color: red; }
+=======
+body { color: black; }
+>>>>>>> parent of 3fb3732 (сменить шрифт на Comic Sans)
+[exit 0]
+
+$ git reset --hard -q; git status --short
+[exit 0]
+
+===== К2.8. REVERT: reset --hard посреди конфликта (новая копия)
+$ git revert 75e686e
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 75e686e... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git reset --hard
+HEAD is now at a1e4513 красный текст
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ ls .git | grep -E 'REVERT|sequencer'; echo ---
+---
+[exit 0]
+
+$ git revert --abort
+error: no cherry-pick or revert in progress
+fatal: revert failed
+[exit 128]
+
+===== К2.9. REVERT: два коммита за раз, конфликт на первом (новая копия)
+$ git log --oneline
+bd06682 (HEAD -> master) index: абзац
+ec39b83 красный текст
+4b8aae9 Добавить структуру страницы
+1a20d94 сменить шрифт на Comic Sans
+048c9c1 Добавить стили
+[exit 0]
+
+$ git revert --no-edit HEAD~3 HEAD
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 1a20d94... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git status
+On branch master
+You are currently reverting commit 1a20d94.
+  (fix conflicts and run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git revert --abort; git log --oneline
+bd06682 (HEAD -> master) index: абзац
+ec39b83 красный текст
+4b8aae9 Добавить структуру страницы
+1a20d94 сменить шрифт на Comic Sans
+048c9c1 Добавить стили
+[exit 0]
+
+===== К2.10. REVERT: reset --soft и cherry-pick --abort посреди конфликта revert (новая копия)
+$ git revert c374a7d
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert c374a7d... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git status
+On branch master
+You are currently reverting commit c374a7d.
+  (fix conflicts and run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git cherry-pick --abort
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ cat style.css
+body { color: red; }[exit 0]
+
+===== К3.0. PULL: обстановка раздела 5 (bare-сервер origin.git, клоны local и team)
+$ git clone origin.git local
+Cloning into 'local'...
+done.
+[exit 0]
+
+$ git clone origin.git team
+Cloning into 'team'...
+done.
+[exit 0]
+
+# коллега (team) закоммитил и отправил CHANGELOG.md: '## Изменения\n- Добавлена лицензия MIT'
+
+===== К3.1. PULL: игрок сам создал CHANGELOG.md — конфликт add/add
+$ put CHANGELOG.md $'## Изменения\n- Моя строка'; git add CHANGELOG.md; git commit -qm 'Мой changelog'
+[exit 0]
+
+$ git pull
+From /work/p1/origin
+   1a61f31..f4a0abb  master     -> origin/master
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+[exit 128]
+
+$ git pull --no-rebase
+Auto-merging CHANGELOG.md
+CONFLICT (add/add): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat CHANGELOG.md
+## Изменения
+<<<<<<< HEAD
+- Моя строка
+=======
+- Добавлена лицензия MIT
+>>>>>>> f4a0abb5149afd7e1462a1f82fab8a8fde9b17bb
+[exit 0]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both added:      CHANGELOG.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+AA CHANGELOG.md
+[exit 0]
+
+$ git diff
+diff --cc CHANGELOG.md
+index 8a4eb44,8754c9e..0000000
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@@ -1,2 -1,2 +1,6 @@@
+  ## Изменения
+- - Моя строка
+ -- Добавлена лицензия MIT
+++<<<<<<< HEAD
+++- Моя строка
+++=======
+++- Добавлена лицензия MIT
+++>>>>>>> f4a0abb5149afd7e1462a1f82fab8a8fde9b17bb
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Merge branch 'master' of /work/p1/origin
+
+# Conflicts:
+#	CHANGELOG.md
+[exit 0]
+
+$ git pull --no-rebase
+error: Pulling is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git push
+To /work/p1/origin.git
+ ! [rejected]        master -> master (non-fast-forward)
+error: failed to push some refs to '/work/p1/origin.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+$ git merge --abort
+[exit 0]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline --all --graph
+* a26bc91 (HEAD -> master) Мой changelog
+| * f4a0abb (origin/master, origin/HEAD) Добавить changelog и лицензию
+|/  
+* 1a61f31 Первый коммит на сервере
+[exit 0]
+
+===== К3.2. PULL: разрешение и push
+$ git config pull.rebase false
+[exit 0]
+
+$ git pull
+Auto-merging CHANGELOG.md
+CONFLICT (add/add): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put CHANGELOG.md $'## Изменения\n- Добавлена лицензия MIT\n- Моя строка'
+[exit 0]
+
+$ git add CHANGELOG.md
+[exit 0]
+
+$ git commit
+[master 325587c] Merge branch 'master' of /work/p1/origin
+[exit 0]
+
+$ git log --oneline --graph
+*   325587c (HEAD -> master) Merge branch 'master' of /work/p1/origin
+|\  
+| * f4a0abb (origin/master, origin/HEAD) Добавить changelog и лицензию
+* | a26bc91 Мой changelog
+|/  
+* 1a61f31 Первый коммит на сервере
+[exit 0]
+
+$ git push
+To /work/p1/origin.git
+   f4a0abb..325587c  master -> master
+[exit 0]
+
+$ git status
+On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+[exit 0]
+
+===== К3.3. PULL: конфликт по содержимому (обе копии дописали CHANGELOG.md), pull.rebase=false уже задан
+# коллега дописал '- Правка коллеги №2' и отправил
+
+$ put CHANGELOG.md $'## Изменения\n- Добавлена лицензия MIT\n- Моя строка\n- Ещё моя строка'; git commit -qam 'Ещё строка'
+[exit 0]
+
+$ git pull
+From /work/p1/origin
+   325587c..c86efaf  master     -> origin/master
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat CHANGELOG.md
+## Изменения
+- Добавлена лицензия MIT
+- Моя строка
+<<<<<<< HEAD
+- Ещё моя строка
+=======
+- Правка коллеги №2
+>>>>>>> c86efaf2cf31cdbc126eab2eb796c295aeb8dbee
+[exit 0]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   CHANGELOG.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git commit -m x
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	CHANGELOG.md
+[exit 128]
+
+$ git pull
+error: Pulling is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git fetch
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+[exit 0]
+
+===== К3.4. PULL: незакоммиченная правка того же файла
+$ put CHANGELOG.md 'черновик'; git pull
+error: Your local changes to the following files would be overwritten by merge:
+	CHANGELOG.md
+Please commit your changes or stash them before you merge.
+Aborting
+Merge with strategy ort failed.
+[exit 2]
+
+$ git checkout -- CHANGELOG.md
+[exit 0]
+
+===== К3.5. PULL --rebase: конфликт (для сравнения; rebase — раздел 8)
+$ git pull --rebase
+Rebasing (1/1)<CR>Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+error: could not apply 368ff08... Ещё строка
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 368ff08... # Ещё строка
+[exit 1]
+
+$ git status
+interactive rebase in progress; onto c86efaf
+Last command done (1 command done):
+   pick 368ff08 # Ещё строка
+No commands remaining.
+You are currently rebasing branch 'master' on 'c86efaf'.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   CHANGELOG.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git rebase --abort
+[exit 0]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+[exit 0]
+
+===== К4.1. STASH POP: конфликт (обстановка: раздел 8; правка app.js в тайнике на master, pop на feature, как П8.3)
+$ put app.js 'console.log("v1"); // локальная правка, ещё не готова коммититься'; git stash
+Saved working directory and index state WIP on master: e0bbd11 Добавить README
+[exit 0]
+
+$ git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ git stash pop
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ cat app.js
+<<<<<<< Updated upstream
+console.log("v1"); // исправлена опечатка в логе
+=======
+console.log("v1"); // локальная правка, ещё не готова коммититься
+>>>>>>> Stashed changes
+[exit 0]
+
+$ git status
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UU app.js
+[exit 0]
+
+$ git diff
+diff --cc app.js
+index 0f3e22c,f066191..0000000
+--- a/app.js
++++ b/app.js
+@@@ -1,1 -1,1 +1,5 @@@
+- console.log("v1"); // исправлена опечатка в логе
+ -console.log("v1"); // локальная правка, ещё не готова коммититься
+++<<<<<<< Updated upstream
+++console.log("v1"); // исправлена опечатка в логе
+++=======
+++console.log("v1"); // локальная правка, ещё не готова коммититься
+++>>>>>>> Stashed changes
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: e0bbd11 Добавить README
+[exit 0]
+
+$ ls .git | grep -E 'MERGE|HEAD'
+AUTO_MERGE
+HEAD
+ORIG_HEAD
+[exit 0]
+
+===== К4.2. STASH: что запрещено и что недоступно посреди конфликта
+$ git commit -m x
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	app.js
+[exit 128]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+$ git stash pop --abort
+error: unknown option `abort'
+usage: git stash pop [--index] [-q | --quiet] [<stash>]
+
+    -q, --[no-]quiet      be quiet, only report errors
+    --[no-]index          attempt to recreate the index
+
+[exit 129]
+
+$ git stash --abort
+error: unknown option `abort'
+usage: git stash list [<log-options>]
+   or: git stash show [-u | --include-untracked | --only-untracked] [<diff-options>] [<stash>]
+   or: git stash drop [-q | --quiet] [<stash>]
+   or: git stash pop [--index] [-q | --quiet] [<stash>]
+   or: git stash apply [--index] [-q | --quiet] [<stash>]
+   or: git stash branch <branchname> [<stash>]
+   or: git stash [push [-p | --patch] [-S | --staged] [-k | --[no-]keep-index] [-q | --quiet]
+                 [-u | --include-untracked] [-a | --all] [(-m | --message) <message>]
+                 [--pathspec-from-file=<file> [--pathspec-file-nul]]
+                 [--] [<pathspec>...]]
+   or: git stash save [-p | --patch] [-S | --staged] [-k | --[no-]keep-index] [-q | --quiet]
+                 [-u | --include-untracked] [-a | --all] [<message>]
+   or: git stash clear
+   or: git stash create [<message>]
+   or: git stash store [(-m | --message) <message>] [-q | --quiet] <commit>
+   or: git stash export (--print | --to-ref <ref>) [<stash>...]
+   or: git stash import <commit>
+
+    -k, --[no-]keep-index keep index
+    -S, --[no-]staged     stash staged changes only
+    -p, --[no-]patch      stash in patch mode
+    -U, --unified <n>     generate diffs with <n> lines context
+    --inter-hunk-context <n>
+                          show context between diff hunks up to the specified number of lines
+    -q, --[no-]quiet      quiet mode
+    -u, --[no-]include-untracked
+                          include untracked files in stash
+    -a, --[no-]all        include ignore files
+    -m, --[no-]message <message>
+                          stash message
+    --[no-]pathspec-from-file <file>
+                          read pathspec from file
+    --[no-]pathspec-file-nul
+                          with --pathspec-from-file, pathspec elements are separated with NUL character
+
+[exit 129]
+
+$ git stash pop
+error: could not write index
+app.js: needs merge
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash
+error: could not write index
+app.js: needs merge
+[exit 1]
+
+$ git checkout master
+error: you need to resolve your current index first
+app.js: needs merge
+[exit 1]
+
+$ git checkout -- app.js
+error: path 'app.js' is unmerged
+[exit 1]
+
+$ git restore app.js
+error: path 'app.js' is unmerged
+[exit 1]
+
+$ git merge master
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git cherry-pick master
+error: Cherry-picking is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git rebase master
+app.js: needs merge
+error: cannot rebase: You have unstaged changes.
+error: additionally, your index contains uncommitted changes.
+error: Please commit or stash them.
+[exit 1]
+
+===== К4.3. STASH: отмена через reset --hard — тайник на месте
+$ git reset --hard
+HEAD is now at 6aa1de5 Добавить страницу «О проекте»
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: e0bbd11 Добавить README
+[exit 0]
+
+===== К4.4. STASH: разрешение — правка, add, тайник убрать вручную
+$ git stash pop
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ put app.js 'console.log("v1"); // исправлена опечатка в логе // локальная правка, ещё не готова коммититься'
+[exit 0]
+
+$ git add app.js
+[exit 0]
+
+$ git status
+On branch feature
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   app.js
+
+[exit 0]
+
+$ git restore --staged app.js
+[exit 0]
+
+$ git status
+On branch feature
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: e0bbd11 Добавить README
+[exit 0]
+
+$ git stash drop
+Dropped refs/stash@{0} (44eced1129e3b22bc7584ec3ec9df914a773a2de)
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+===== К4.5. STASH APPLY: конфликт (новая копия)
+$ put app.js 'console.log("v1"); // локальная правка, ещё не готова коммититься'; git stash; git checkout -q feature
+Saved working directory and index state WIP on master: 352e46e Добавить README
+[exit 0]
+
+$ git stash apply
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 1]
+
+$ git status --short
+UU app.js
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 352e46e Добавить README
+[exit 0]
+
+$ git checkout HEAD -- app.js
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+===== К4.6. STASH POP: два файла в тайнике, конфликт в одном (новая копия; на master)
+$ put app.js 'console.log("v1"); // локальная правка'; put README.md '# Мини-сайт!'; git stash
+Saved working directory and index state WIP on master: 7f3c92d Добавить README
+[exit 0]
+
+$ put app.js 'console.log("v2");'; git commit -qam 'master: v2'
+[exit 0]
+
+$ git stash pop
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   README.md
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git status
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   README.md
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+[exit 0]
+
+$ git status --short
+M  README.md
+UU app.js
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 7f3c92d Добавить README
+[exit 0]
+
+===== К4.7. STASH POP: незакоммиченная правка того же файла (новая копия)
+$ put app.js 'console.log("v1"); // тайник'; git stash; git checkout -q feature; put app.js 'x'
+Saved working directory and index state WIP on master: 0b3c0ad Добавить README
+[exit 0]
+
+$ git stash pop
+error: Your local changes to the following files would be overwritten by merge:
+	app.js
+Please commit your changes or stash them before you merge.
+Aborting
+On branch feature
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash list
+stash@{0}: WIP on master: 0b3c0ad Добавить README
+[exit 0]
+
+===== К5.1. CHERRY-PICK: конфликт и осмотр (обстановка: раздел 8, на master закоммичен app.js v2)
+$ git log --oneline --all --graph
+* 7b5697d (HEAD -> master) master: v2
+* ea07a85 Добавить README
+| * f12dd83 (feature) Добавить страницу «О проекте»
+| * ae28885 fix: опечатка в логе
+|/  
+* 6c9fbb7 Базовая версия приложения
+[exit 0]
+
+$ git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ cat app.js
+<<<<<<< HEAD
+console.log("v2");
+=======
+console.log("v1"); // исправлена опечатка в логе
+>>>>>>> ae28885 (fix: опечатка в логе)
+[exit 0]
+
+$ git status
+On branch master
+You are currently cherry-picking commit ae28885.
+  (fix conflicts and run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UU app.js
+[exit 0]
+
+$ cat .git/MERGE_MSG
+fix: опечатка в логе
+
+# Conflicts:
+#	app.js
+[exit 0]
+
+$ ls .git | grep -E 'MERGE|CHERRY|HEAD|sequencer'
+AUTO_MERGE
+CHERRY_PICK_HEAD
+HEAD
+MERGE_MSG
+[exit 0]
+
+$ git log --oneline
+7b5697d (HEAD -> master) master: v2
+ea07a85 Добавить README
+6c9fbb7 Базовая версия приложения
+[exit 0]
+
+===== К5.2. CHERRY-PICK: что запрещено посреди конфликта
+$ git cherry-pick --continue
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	app.js
+[exit 128]
+
+$ git commit -m x
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	app.js
+[exit 128]
+
+$ git cherry-pick f12dd83
+error: Cherry-picking is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git merge feature
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git revert HEAD
+error: Reverting is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: revert failed
+[exit 128]
+
+$ git checkout feature
+error: you need to resolve your current index first
+app.js: needs merge
+[exit 1]
+
+$ git stash
+error: could not write index
+app.js: needs merge
+[exit 1]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+===== К5.3. CHERRY-PICK: --abort
+$ git cherry-pick --abort
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+7b5697d (HEAD -> master) master: v2
+ea07a85 Добавить README
+6c9fbb7 Базовая версия приложения
+[exit 0]
+
+$ git cherry-pick --abort
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+$ git cherry-pick --continue
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+===== К5.4. CHERRY-PICK: разрешение, add, --continue
+$ git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'
+[exit 0]
+
+$ git add app.js
+[exit 0]
+
+$ git status
+On branch master
+You are currently cherry-picking commit ae28885.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+[exit 0]
+
+$ git cherry-pick --continue
+[master 86e02b8] fix: опечатка в логе
+ Date: Mon Jun 1 16:01:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git log --oneline
+86e02b8 (HEAD -> master) fix: опечатка в логе
+7b5697d master: v2
+ea07a85 Добавить README
+6c9fbb7 Базовая версия приложения
+[exit 0]
+
+$ git log -1
+commit 86e02b8489dd1c18e9bce03e940932e43ed815e1 (HEAD -> master)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 16:01:00 2026 +0300
+
+    fix: опечатка в логе
+[exit 0]
+
+===== К5.5. CHERRY-PICK: разрешение через commit без -m
+$ git reset -q --hard HEAD~1; git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js
+[exit 0]
+
+$ git commit
+[master b791afd] fix: опечатка в логе
+ Date: Mon Jun 1 16:01:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git log -1
+commit b791afda9d86b6e06a32f4b1af6c020150ee9248 (HEAD -> master)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 16:01:00 2026 +0300
+
+    fix: опечатка в логе
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К5.6. CHERRY-PICK: итог совпал с HEAD
+$ git reset -q --hard HEAD~1; git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git checkout --ours app.js; git add app.js
+Updated 1 path from the index
+[exit 0]
+
+$ git cherry-pick --continue
+The previous cherry-pick is now empty, possibly due to conflict resolution.
+If you wish to commit it anyway, use:
+
+    git commit --allow-empty
+
+Otherwise, please use 'git cherry-pick --skip'
+On branch master
+You are currently cherry-picking commit ae28885.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+nothing to commit, working tree clean
+[exit 1]
+
+$ git status
+On branch master
+You are currently cherry-picking commit ae28885.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git cherry-pick --skip
+[exit 0]
+
+$ git status; git log --oneline
+On branch master
+nothing to commit, working tree clean
+7b5697d (HEAD -> master) master: v2
+ea07a85 Добавить README
+6c9fbb7 Базовая версия приложения
+[exit 0]
+
+===== К5.7. CHERRY-PICK: --skip, --quit, reset --hard
+$ git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git cherry-pick --skip
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git cherry-pick --quit
+[exit 0]
+
+$ git status
+On branch master
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git reset -q --hard; git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git reset --hard
+HEAD is now at 7b5697d master: v2
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ ls .git | grep -E 'CHERRY|sequencer'; echo ---
+---
+[exit 0]
+
+$ git cherry-pick --abort
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+===== К5.8. CHERRY-PICK: два коммита, конфликт на первом
+$ git cherry-pick ae28885 f12dd83
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git status
+On branch master
+You are currently cherry-picking commit ae28885.
+  (fix conflicts and run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js
+[exit 0]
+
+$ git cherry-pick --continue
+[master 115859d] fix: опечатка в логе
+ Date: Mon Jun 1 16:01:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[master 9590e4a] Добавить страницу «О проекте»
+ Date: Mon Jun 1 16:02:00 2026 +0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 about.html
+[exit 0]
+
+$ git log --oneline
+9590e4a (HEAD -> master) Добавить страницу «О проекте»
+115859d fix: опечатка в логе
+7b5697d master: v2
+ea07a85 Добавить README
+6c9fbb7 Базовая версия приложения
+[exit 0]
+
+===== К5.9. CHERRY-PICK: revert --abort и reset --soft посреди конфликта cherry-pick
+$ git cherry-pick ae28885
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply ae28885... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git revert --abort
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+9590e4a (HEAD -> master) Добавить страницу «О проекте»
+115859d fix: опечатка в логе
+7b5697d master: v2
+ea07a85 Добавить README
+6c9fbb7 Базовая версия приложения
+[exit 0]
+
+===== К6.1. REBASE: конфликт и осмотр (обстановка: раздел 8, на master закоммичен app.js v2, rebase master из feature, как П8.11)
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 871ab0c... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 871ab0c... # fix: опечатка в логе
+[exit 1]
+
+$ cat app.js
+<<<<<<< HEAD
+console.log("v2");
+=======
+console.log("v1"); // исправлена опечатка в логе
+>>>>>>> 871ab0c (fix: опечатка в логе)
+[exit 0]
+
+$ git status --short
+UU app.js
+[exit 0]
+
+$ git branch
+* (no branch, rebasing feature)
+  feature
+  master
+[exit 0]
+
+$ git log --oneline
+542be3b (HEAD, master) master: v2
+b69f9e7 Добавить README
+4309124 Базовая версия приложения
+[exit 0]
+
+$ cat .git/MERGE_MSG
+fix: опечатка в логе
+
+# Conflicts:
+#	app.js
+[exit 0]
+
+$ ls .git | grep -E 'MERGE|REBASE|rebase|HEAD'
+AUTO_MERGE
+HEAD
+MERGE_MSG
+ORIG_HEAD
+REBASE_HEAD
+rebase-merge
+[exit 0]
+
+===== К6.2. REBASE: что запрещено посреди конфликта
+$ git rebase --continue
+app.js: needs merge
+You must edit all merge conflicts and then
+mark them as resolved using git add
+[exit 1]
+
+$ git rebase master
+fatal: It seems that there is already a rebase-merge directory, and
+I wonder if you are in the middle of another rebase.  If that is the
+case, please try
+	git rebase (--continue | --abort | --skip)
+If that is not the case, please
+	rm -fr ".git/rebase-merge"
+and run me again.  I am stopping in case you still have something
+valuable there.
+
+[exit 128]
+
+$ git merge master
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[exit 128]
+
+$ git cherry-pick master
+error: Cherry-picking is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git checkout master
+error: you need to resolve your current index first
+app.js: needs merge
+[exit 1]
+
+$ git stash
+error: could not write index
+app.js: needs merge
+[exit 1]
+
+$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+[exit 128]
+
+$ git cherry-pick --abort
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+===== К6.3. REBASE: разрешение, add, --continue
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'
+[exit 0]
+
+$ git add app.js
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 542be3b
+Last command done (1 command done):
+   pick 871ab0c # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick b3fa05e # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on '542be3b'.
+  (all conflicts fixed: run "git rebase --continue")
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   app.js
+
+[exit 0]
+
+$ git rebase --continue
+[detached HEAD 3b21ed0] fix: опечатка в логе
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline --all --graph
+* af45f56 (HEAD -> feature) Добавить страницу «О проекте»
+* 3b21ed0 fix: опечатка в логе
+* 542be3b (master) master: v2
+* b69f9e7 Добавить README
+* 4309124 Базовая версия приложения
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git rebase --continue
+fatal: no rebase in progress
+[exit 128]
+
+$ git rebase --abort
+fatal: no rebase in progress
+[exit 128]
+
+===== К6.4. REBASE: git commit посреди rebase после add, затем --continue (новая копия)
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 2f2a409... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 2f2a409... # fix: опечатка в логе
+[exit 1]
+
+$ git commit -m x
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	app.js
+[exit 128]
+
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js
+[exit 0]
+
+$ git commit
+[detached HEAD 86aa756] fix: опечатка в логе
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 23becef
+Last command done (1 command done):
+   pick 2f2a409 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick cb91fc2 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently editing a commit while rebasing branch 'feature' on '23becef'.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git rebase --continue
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline
+fbdbae8 (HEAD -> feature) Добавить страницу «О проекте»
+86aa756 fix: опечатка в логе
+23becef (master) master: v2
+9406f7d Добавить README
+51800f2 Базовая версия приложения
+[exit 0]
+
+===== К6.5. REBASE: итог совпал с новой базой, --skip (новая копия)
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 758b8e2... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 758b8e2... # fix: опечатка в логе
+[exit 1]
+
+$ git checkout --ours app.js; cat app.js; git add app.js
+Updated 1 path from the index
+console.log("v2");[exit 0]
+
+$ git status
+interactive rebase in progress; onto 916009d
+Last command done (1 command done):
+   pick 758b8e2 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick b0ad745 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on '916009d'.
+  (all conflicts fixed: run "git rebase --continue")
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git rebase --continue
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline
+332ad44 (HEAD -> feature) Добавить страницу «О проекте»
+916009d (master) master: v2
+e23f19d Добавить README
+1d7c988 Базовая версия приложения
+[exit 0]
+
+$ git reset -q --hard ORIG_HEAD; git log --oneline
+b0ad745 (HEAD -> feature) Добавить страницу «О проекте»
+758b8e2 fix: опечатка в логе
+1d7c988 Базовая версия приложения
+[exit 0]
+
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 758b8e2... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 758b8e2... # fix: опечатка в логе
+[exit 1]
+
+$ git rebase --skip
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline
+ac3adc5 (HEAD -> feature) Добавить страницу «О проекте»
+916009d (master) master: v2
+e23f19d Добавить README
+1d7c988 Базовая версия приложения
+[exit 0]
+
+===== К6.6. REBASE: reset --hard посреди конфликта, --quit (новая копия)
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply de1bafa... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply de1bafa... # fix: опечатка в логе
+[exit 1]
+
+$ git reset --hard
+HEAD is now at 3546b3e master: v2
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 3546b3e
+Last command done (1 command done):
+   pick de1bafa # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick ccaa5e5 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently editing a commit while rebasing branch 'feature' on '3546b3e'.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git rebase --abort
+[exit 0]
+
+$ git status; git log --oneline
+On branch feature
+nothing to commit, working tree clean
+ccaa5e5 (HEAD -> feature) Добавить страницу «О проекте»
+de1bafa fix: опечатка в логе
+43390c9 Базовая версия приложения
+[exit 0]
+
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply de1bafa... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply de1bafa... # fix: опечатка в логе
+[exit 1]
+
+$ git rebase --quit
+[exit 0]
+
+$ git status
+HEAD detached from refs/heads/feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+* (HEAD detached from refs/heads/feature)
+  feature
+  master
+[exit 0]
+
+$ git log --oneline --all --graph
+* 3546b3e (HEAD, master) master: v2
+* 9a8fd3d Добавить README
+| * ccaa5e5 (feature) Добавить страницу «О проекте»
+| * de1bafa fix: опечатка в логе
+|/  
+* 43390c9 Базовая версия приложения
+[exit 0]
+
+$ git checkout -f -q feature; git status --short
+[exit 0]
+
+===== К6.7. СВОДКА: --abort и --continue не своей команды
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git revert --continue
+error: no cherry-pick or revert in progress
+fatal: revert failed
+[exit 128]
+
+$ git cherry-pick --continue
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+$ git rebase --continue
+fatal: no rebase in progress
+[exit 128]
+
+$ git merge --abort
+[exit 0]
+
+
+# ---------------------------------------------------------------------------
+# Дополнительные прогоны, 27.09.2026, те же условия (шапка файла). Каждый блок — в новом каталоге,
+# хэши с блоками К1–К6 не совпадают. Состояния конфликта готовятся тихо, одной и той же командой:
+#   merge   — обстановка К1.1, затем git merge conflict-demo;
+#   revert  — обстановка К2.1, затем git revert <Comic Sans>;
+#   cherry-pick — обстановка К5.1 (на master закоммичен app.js v2), затем git cherry-pick <fix>;
+#   rebase  — обстановка К6.1 (master v2, на feature), затем git rebase master;
+#   тайник  — обстановка К4.1: правка app.js спрятана на master, git checkout feature, git stash pop.
+# ---------------------------------------------------------------------------
+
+===== К7.1. REFLOG: cherry-pick с конфликтом → --continue
+$ git reflog
+2f7dd94 (HEAD -> master) HEAD@{0}: commit: master: v2
+07a2e08 HEAD@{1}: commit: Добавить README
+4523efd HEAD@{2}: checkout: moving from feature to master
+13d43ea (feature) HEAD@{3}: commit: Добавить страницу «О проекте»
+3bfa2d4 HEAD@{4}: commit: fix: опечатка в логе
+4523efd HEAD@{5}: checkout: moving from master to feature
+4523efd HEAD@{6}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js; git cherry-pick --continue
+[master 75a7db3] fix: опечатка в логе
+ Date: Mon Jun 1 10:02:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reflog
+75a7db3 (HEAD -> master) HEAD@{0}: commit (cherry-pick): fix: опечатка в логе
+2f7dd94 HEAD@{1}: commit: master: v2
+07a2e08 HEAD@{2}: commit: Добавить README
+4523efd HEAD@{3}: checkout: moving from feature to master
+13d43ea (feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+3bfa2d4 HEAD@{5}: commit: fix: опечатка в логе
+4523efd HEAD@{6}: checkout: moving from master to feature
+4523efd HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К7.2. REFLOG: cherry-pick с конфликтом → add, git commit
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js; git commit
+[master 374c234] fix: опечатка в логе
+ Date: Mon Jun 1 10:11:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reflog
+374c234 (HEAD -> master) HEAD@{0}: commit (cherry-pick): fix: опечатка в логе
+22bffc8 HEAD@{1}: commit: master: v2
+c692038 HEAD@{2}: commit: Добавить README
+7735a3b HEAD@{3}: checkout: moving from feature to master
+7017903 (feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+7ec9a3b HEAD@{5}: commit: fix: опечатка в логе
+7735a3b HEAD@{6}: checkout: moving from master to feature
+7735a3b HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К7.3. REFLOG: cherry-pick с конфликтом → --skip
+$ git cherry-pick --skip
+[exit 0]
+
+$ git reflog
+dafb632 (HEAD -> master) HEAD@{0}: reset: moving to dafb632891327c33ba8bfc739f9026681defdbbf
+dafb632 (HEAD -> master) HEAD@{1}: commit: master: v2
+e1dcbe5 HEAD@{2}: commit: Добавить README
+2728f26 HEAD@{3}: checkout: moving from feature to master
+e237ff2 (feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+05edd88 HEAD@{5}: commit: fix: опечатка в логе
+2728f26 HEAD@{6}: checkout: moving from master to feature
+2728f26 HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К7.4. REFLOG: cherry-pick с конфликтом → --abort
+$ git cherry-pick --abort
+[exit 0]
+
+$ git reflog
+724cebc (HEAD -> master) HEAD@{0}: reset: moving to 724cebcd56f7f57bc32744e7c473c6c8861a6d6a
+724cebc (HEAD -> master) HEAD@{1}: commit: master: v2
+d055784 HEAD@{2}: commit: Добавить README
+189f660 HEAD@{3}: checkout: moving from feature to master
+45b51e1 (feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+11d0122 HEAD@{5}: commit: fix: опечатка в логе
+189f660 HEAD@{6}: checkout: moving from master to feature
+189f660 HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К7.5. REFLOG: rebase с конфликтом → add, --continue
+$ git reflog
+355e265 (HEAD, master) HEAD@{0}: rebase (start): checkout master
+e0159f5 (feature) HEAD@{1}: checkout: moving from master to feature
+355e265 (HEAD, master) HEAD@{2}: commit: master: v2
+f562409 HEAD@{3}: commit: Добавить README
+fdead5b HEAD@{4}: checkout: moving from feature to master
+e0159f5 (feature) HEAD@{5}: commit: Добавить страницу «О проекте»
+6078080 HEAD@{6}: commit: fix: опечатка в логе
+fdead5b HEAD@{7}: checkout: moving from master to feature
+fdead5b HEAD@{8}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js; git rebase --continue
+[detached HEAD b8a854d] fix: опечатка в логе
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git reflog
+ada2b5a (HEAD -> feature) HEAD@{0}: rebase (finish): returning to refs/heads/feature
+ada2b5a (HEAD -> feature) HEAD@{1}: rebase (pick): Добавить страницу «О проекте»
+b8a854d HEAD@{2}: rebase (continue): fix: опечатка в логе
+355e265 (master) HEAD@{3}: rebase (start): checkout master
+e0159f5 HEAD@{4}: checkout: moving from master to feature
+355e265 (master) HEAD@{5}: commit: master: v2
+f562409 HEAD@{6}: commit: Добавить README
+fdead5b HEAD@{7}: checkout: moving from feature to master
+e0159f5 HEAD@{8}: commit: Добавить страницу «О проекте»
+6078080 HEAD@{9}: commit: fix: опечатка в логе
+fdead5b HEAD@{10}: checkout: moving from master to feature
+fdead5b HEAD@{11}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reflog show feature
+ada2b5a (HEAD -> feature) feature@{0}: rebase (finish): refs/heads/feature onto 355e2655f2a56d13b14dd7c20c03f3675bd7d674
+e0159f5 feature@{1}: commit: Добавить страницу «О проекте»
+6078080 feature@{2}: commit: fix: опечатка в логе
+fdead5b feature@{3}: branch: Created from HEAD
+[exit 0]
+
+===== К7.6. REFLOG: rebase с конфликтом → --skip
+$ git rebase --skip
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git reflog
+410107c (HEAD -> feature) HEAD@{0}: rebase (finish): returning to refs/heads/feature
+410107c (HEAD -> feature) HEAD@{1}: rebase (pick): Добавить страницу «О проекте»
+51581ee (master) HEAD@{2}: rebase (start): checkout master
+2a7f3cd HEAD@{3}: checkout: moving from master to feature
+51581ee (master) HEAD@{4}: commit: master: v2
+4d5c490 HEAD@{5}: commit: Добавить README
+7bb1030 HEAD@{6}: checkout: moving from feature to master
+2a7f3cd HEAD@{7}: commit: Добавить страницу «О проекте»
+c540e4f HEAD@{8}: commit: fix: опечатка в логе
+7bb1030 HEAD@{9}: checkout: moving from master to feature
+7bb1030 HEAD@{10}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reflog show feature
+410107c (HEAD -> feature) feature@{0}: rebase (finish): refs/heads/feature onto 51581ee32ba1a8c3f01f349b2982cccf085b67c1
+2a7f3cd feature@{1}: commit: Добавить страницу «О проекте»
+c540e4f feature@{2}: commit: fix: опечатка в логе
+7bb1030 feature@{3}: branch: Created from HEAD
+[exit 0]
+
+===== К7.7. REFLOG: rebase с конфликтом → --abort
+$ git rebase --abort
+[exit 0]
+
+$ git reflog
+c777c69 (HEAD -> feature) HEAD@{0}: rebase (abort): returning to refs/heads/feature
+0a0566a (master) HEAD@{1}: rebase (start): checkout master
+c777c69 (HEAD -> feature) HEAD@{2}: checkout: moving from master to feature
+0a0566a (master) HEAD@{3}: commit: master: v2
+f5c0af3 HEAD@{4}: commit: Добавить README
+19fb6e2 HEAD@{5}: checkout: moving from feature to master
+c777c69 (HEAD -> feature) HEAD@{6}: commit: Добавить страницу «О проекте»
+67e94fa HEAD@{7}: commit: fix: опечатка в логе
+19fb6e2 HEAD@{8}: checkout: moving from master to feature
+19fb6e2 HEAD@{9}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reflog show feature
+c777c69 (HEAD -> feature) feature@{0}: commit: Добавить страницу «О проекте»
+67e94fa feature@{1}: commit: fix: опечатка в логе
+19fb6e2 feature@{2}: branch: Created from HEAD
+[exit 0]
+
+===== К7.8. REFLOG: rebase с конфликтом → add, git commit посреди, --continue
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js; git commit
+[detached HEAD 652c08b] fix: опечатка в логе
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reflog
+652c08b (HEAD) HEAD@{0}: commit: fix: опечатка в логе
+a32d39d (master) HEAD@{1}: rebase (start): checkout master
+34e90cc (feature) HEAD@{2}: checkout: moving from master to feature
+a32d39d (master) HEAD@{3}: commit: master: v2
+81dd0d7 HEAD@{4}: commit: Добавить README
+c419b97 HEAD@{5}: checkout: moving from feature to master
+34e90cc (feature) HEAD@{6}: commit: Добавить страницу «О проекте»
+86faed7 HEAD@{7}: commit: fix: опечатка в логе
+c419b97 HEAD@{8}: checkout: moving from master to feature
+c419b97 HEAD@{9}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git rebase --continue
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git reflog
+b19ee05 (HEAD -> feature) HEAD@{0}: rebase (finish): returning to refs/heads/feature
+b19ee05 (HEAD -> feature) HEAD@{1}: rebase (pick): Добавить страницу «О проекте»
+652c08b HEAD@{2}: commit: fix: опечатка в логе
+a32d39d (master) HEAD@{3}: rebase (start): checkout master
+34e90cc HEAD@{4}: checkout: moving from master to feature
+a32d39d (master) HEAD@{5}: commit: master: v2
+81dd0d7 HEAD@{6}: commit: Добавить README
+c419b97 HEAD@{7}: checkout: moving from feature to master
+34e90cc HEAD@{8}: commit: Добавить страницу «О проекте»
+86faed7 HEAD@{9}: commit: fix: опечатка в логе
+c419b97 HEAD@{10}: checkout: moving from master to feature
+c419b97 HEAD@{11}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К7.9. REFLOG: stash pop с конфликтом, затем add и stash drop
+$ git reflog
+5e4071c (HEAD -> feature) HEAD@{0}: checkout: moving from master to feature
+0841897 (master) HEAD@{1}: reset: moving to HEAD
+0841897 (master) HEAD@{2}: commit: Добавить README
+31f3e1e HEAD@{3}: checkout: moving from feature to master
+5e4071c (HEAD -> feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+7a94dc7 HEAD@{5}: commit: fix: опечатка в логе
+31f3e1e HEAD@{6}: checkout: moving from master to feature
+31f3e1e HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 0841897 Добавить README
+[exit 0]
+
+$ put app.js 'console.log("v1"); // исправлена опечатка в логе // локальная правка'; git add app.js; git stash drop
+Dropped refs/stash@{0} (63209ed8a9f653d305221a768c6229d56aaaa359)
+[exit 0]
+
+$ git reflog
+5e4071c (HEAD -> feature) HEAD@{0}: checkout: moving from master to feature
+0841897 (master) HEAD@{1}: reset: moving to HEAD
+0841897 (master) HEAD@{2}: commit: Добавить README
+31f3e1e HEAD@{3}: checkout: moving from feature to master
+5e4071c (HEAD -> feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+7a94dc7 HEAD@{5}: commit: fix: опечатка в логе
+31f3e1e HEAD@{6}: checkout: moving from master to feature
+31f3e1e HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К7.10. REFLOG: stash apply с конфликтом, затем reset --hard
+$ put app.js 'console.log("v1"); // локальная правка'; git stash; git checkout -q feature
+Saved working directory and index state WIP on master: b0b5f03 Добавить README
+[exit 0]
+
+$ git stash apply
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 1]
+
+$ git reflog
+8629811 (HEAD -> feature) HEAD@{0}: checkout: moving from master to feature
+b0b5f03 (master) HEAD@{1}: reset: moving to HEAD
+b0b5f03 (master) HEAD@{2}: commit: Добавить README
+f018c61 HEAD@{3}: checkout: moving from feature to master
+8629811 (HEAD -> feature) HEAD@{4}: commit: Добавить страницу «О проекте»
+898e5ea HEAD@{5}: commit: fix: опечатка в логе
+f018c61 HEAD@{6}: checkout: moving from master to feature
+f018c61 HEAD@{7}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reset --hard
+HEAD is now at 8629811 Добавить страницу «О проекте»
+[exit 0]
+
+$ git reflog
+8629811 (HEAD -> feature) HEAD@{0}: reset: moving to HEAD
+8629811 (HEAD -> feature) HEAD@{1}: checkout: moving from master to feature
+b0b5f03 (master) HEAD@{2}: reset: moving to HEAD
+b0b5f03 (master) HEAD@{3}: commit: Добавить README
+f018c61 HEAD@{4}: checkout: moving from feature to master
+8629811 (HEAD -> feature) HEAD@{5}: commit: Добавить страницу «О проекте»
+898e5ea HEAD@{6}: commit: fix: опечатка в логе
+f018c61 HEAD@{7}: checkout: moving from master to feature
+f018c61 HEAD@{8}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== К8.1. REVERT: add, затем git commit -m вместо --continue
+$ put style.css 'body { color: black; }'; git add style.css
+[exit 0]
+
+$ git commit -m 'Убрать Comic Sans'
+[master d951223] Убрать Comic Sans
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+d951223 (HEAD -> master) Убрать Comic Sans
+c861c8c красный текст
+51878fa Добавить структуру страницы
+1b270ae сменить шрифт на Comic Sans
+092e1d3 Добавить стили
+[exit 0]
+
+$ git revert --continue
+error: no cherry-pick or revert in progress
+fatal: revert failed
+[exit 128]
+
+===== К8.2. CHERRY-PICK: add, затем git commit -m вместо --continue
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js
+[exit 0]
+
+$ git commit -m 'Фикс опечатки'
+[master ec07edf] Фикс опечатки
+ Date: Mon Jun 1 11:42:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+ec07edf (HEAD -> master) Фикс опечатки
+1483d71 master: v2
+78074f1 Добавить README
+5e89406 Базовая версия приложения
+[exit 0]
+
+$ git log -1
+commit ec07edf81be04d41cbd830c83332e3af600f960e (HEAD -> master)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 11:42:00 2026 +0300
+
+    Фикс опечатки
+[exit 0]
+
+$ git cherry-pick --continue
+error: no cherry-pick or revert in progress
+fatal: cherry-pick failed
+[exit 128]
+
+===== К9.1. MODIFY/DELETE (удалено у них): разрешение через git add, commit
+$ git merge conflict-demo
+CONFLICT (modify/delete): style.css deleted in conflict-demo and modified in HEAD.  Version HEAD of style.css left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git add style.css
+[exit 0]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+[exit 0]
+
+$ git commit
+[master 4c1d6d5] Merge branch 'conflict-demo'
+[exit 0]
+
+$ git log --oneline --graph
+*   4c1d6d5 (HEAD -> master) Merge branch 'conflict-demo'
+|\  
+| * 3be3a7a (conflict-demo) удалить стили
+| * ce46dff conflict-demo: увеличить шрифт
+* | a5c381c сузить отступы
+|/  
+* f702f12 Первый коммит: базовые стили
+[exit 0]
+
+$ ls
+style.css
+[exit 0]
+
+===== К9.2. MODIFY/DELETE (удалено у них): разрешение через git rm, commit
+$ git merge conflict-demo
+CONFLICT (modify/delete): style.css deleted in conflict-demo and modified in HEAD.  Version HEAD of style.css left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git rm style.css
+rm 'style.css'
+[exit 0]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	deleted:    style.css
+
+[exit 0]
+
+$ git status --short
+D  style.css
+[exit 0]
+
+$ git commit
+[master dfe4ad5] Merge branch 'conflict-demo'
+[exit 0]
+
+$ ls
+[exit 0]
+
+===== К9.3. MODIFY/DELETE (удалено у нас): conflict-demo меняет style.css, master удалил
+$ git log --oneline --all --graph
+* 5f379da (HEAD -> master) удалить стили
+* 1cd4e61 сузить отступы
+| * a970248 (conflict-demo) conflict-demo: увеличить шрифт
+|/  
+* 4b188bf Первый коммит: базовые стили
+[exit 0]
+
+$ git merge conflict-demo
+CONFLICT (modify/delete): style.css deleted in HEAD and modified in conflict-demo.  Version conflict-demo of style.css left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add/rm <file>..." as appropriate to mark resolution)
+	deleted by us:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+DU style.css
+[exit 0]
+
+$ ls; cat style.css
+style.css
+body { background: white; color: black; }
+/* правка в conflict-demo: увеличили шрифт */[exit 0]
+
+$ git rm style.css
+rm 'style.css'
+[exit 0]
+
+$ git status --short
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git merge conflict-demo
+CONFLICT (modify/delete): style.css deleted in HEAD and modified in conflict-demo.  Version conflict-demo of style.css left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git add style.css
+[exit 0]
+
+$ git status --short
+A  style.css
+[exit 0]
+
+$ git commit
+[master 939a0ab] Merge branch 'conflict-demo'
+[exit 0]
+
+$ ls
+style.css
+[exit 0]
+
+===== К9.4. MODIFY/DELETE при pull: коллега удалил CHANGELOG.md, игрок его изменил
+$ put CHANGELOG.md $'## Изменения\n- Добавлена лицензия MIT\n- Моя строка'; git commit -qam 'Моя строка'
+[exit 0]
+
+$ git pull --no-rebase
+From /work/d4/origin
+   5407cf6..070a0cc  master     -> origin/master
+CONFLICT (modify/delete): CHANGELOG.md deleted in 070a0cccb5bef73c6f99ad5454d5587391e55c4d and modified in HEAD.  Version HEAD of CHANGELOG.md left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add/rm <file>..." as appropriate to mark resolution)
+	deleted by them: CHANGELOG.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UD CHANGELOG.md
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+===== К10.v. RESET посреди конфликта: revert — reset --soft HEAD, затем reset (mixed)
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git reset
+Unstaged changes after reset:
+M	style.css
+[exit 0]
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+---
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+===== К10.c. RESET посреди конфликта: cherry-pick — reset --soft HEAD, затем reset (mixed)
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git reset
+Unstaged changes after reset:
+M	app.js
+[exit 0]
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+---
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+===== К10.b. RESET посреди конфликта: rebase — reset --soft HEAD, затем reset (mixed)
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git reset
+Unstaged changes after reset:
+M	app.js
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 8405d75
+Last command done (1 command done):
+   pick f7e9ab5 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick 56cd40d # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently editing a commit while rebasing branch 'feature' on '8405d75'.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+rebase-merge
+---
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+===== К10.s. RESET посреди конфликта: тайник — reset --soft HEAD, затем reset (mixed)
+$ git reset --soft HEAD
+fatal: Cannot do a soft reset in the middle of a merge.
+[exit 128]
+
+$ git reset
+Unstaged changes after reset:
+M	app.js
+[exit 0]
+
+$ git status
+On branch feature
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+---
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 4a53802 Добавить README
+[exit 0]
+
+===== К11.v. COMMIT -A посреди конфликта: revert
+$ git commit -am 'всё сразу'
+[master d7e201a] всё сразу
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline -3
+d7e201a (HEAD -> master) всё сразу
+15a063f красный текст
+f28d425 Добавить структуру страницы
+[exit 0]
+
+===== К11.c. COMMIT -A посреди конфликта: cherry-pick
+$ git commit -am 'всё сразу'
+[master 56132f2] всё сразу
+ Date: Mon Jun 1 13:31:00 2026 +0300
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline -3
+56132f2 (HEAD -> master) всё сразу
+4ef7d1d master: v2
+81b910b Добавить README
+[exit 0]
+
+===== К11.b. COMMIT -A посреди конфликта: rebase
+$ git commit -am 'всё сразу'
+[detached HEAD 66b1b91] всё сразу
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 56517a5
+Last command done (1 command done):
+   pick 99d6150 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick 4a923a3 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently editing a commit while rebasing branch 'feature' on '56517a5'.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline -3
+66b1b91 (HEAD) всё сразу
+56517a5 (master) master: v2
+2422780 Добавить README
+[exit 0]
+
+===== К11.s. COMMIT -A посреди конфликта: тайник
+$ git commit -am 'всё сразу'
+[feature ef2c091] всё сразу
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline -3
+ef2c091 (HEAD -> feature) всё сразу
+d34299b Добавить страницу «О проекте»
+6607d74 fix: опечатка в логе
+[exit 0]
+
+===== К11.m. COMMIT после add в состоянии К1.15 (checkout -b бросил слияние)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git checkout -b other
+Switched to a new branch 'other'
+[exit 0]
+
+$ put style.css $'body { background: white; color: black; }\n/* правка в текущей ветке: сузили отступы */\n/* правка в conflict-demo: увеличили шрифт */'; git add style.css
+[exit 0]
+
+$ git status
+On branch other
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+$ git commit -m 'после checkout -b'
+[other 5d9fc25] после checkout -b
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+[exit 0]
+
+$ git log --oneline --all --graph
+* 5d9fc25 (HEAD -> other) после checkout -b
+* 083fb37 (master) сузить отступы
+| * 972ae77 (conflict-demo) conflict-demo: увеличить шрифт
+|/  
+* 864c1a8 Первый коммит: базовые стили
+[exit 0]
+
+===== К12.m1. ИДЁТ merge, НЕСЛИТЫХ НЕТ (после git add): git checkout conflict-demo
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git checkout conflict-demo
+Switched to branch 'conflict-demo'
+[exit 0]
+
+$ git status
+On branch conflict-demo
+nothing to commit, working tree clean
+[exit 0]
+
+===== К12.m2. ИДЁТ merge, НЕСЛИТЫХ НЕТ (после git add): git merge conflict-demo
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git merge conflict-demo
+fatal: You have not concluded your merge (MERGE_HEAD exists).
+Please, commit your changes before you merge.
+[exit 128]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+[exit 0]
+
+===== К12.m3. ИДЁТ merge, НЕСЛИТЫХ НЕТ (после git add): git revert HEAD
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git revert HEAD
+error: your local changes would be overwritten by revert.
+hint: commit your changes or stash them to proceed.
+fatal: revert failed
+[exit 128]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+[exit 0]
+
+===== К12.m4. ИДЁТ merge, НЕСЛИТЫХ НЕТ (после git add): git cherry-pick conflict-demo
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git cherry-pick conflict-demo
+error: your local changes would be overwritten by cherry-pick.
+hint: commit your changes or stash them to proceed.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+[exit 0]
+
+===== К12.m5. ИДЁТ merge, НЕСЛИТЫХ НЕТ (после git add): git rebase conflict-demo
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git rebase conflict-demo
+error: cannot rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+[exit 1]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+[exit 0]
+
+===== К12.m6. ИДЁТ merge, НЕСЛИТЫХ НЕТ (после git add): git stash
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git stash
+Saved working directory and index state WIP on master: 0b20dec сузить отступы
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К12.v1. ИДЁТ revert, НЕСЛИТЫХ НЕТ (после git add): git checkout HEAD~1
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git checkout HEAD~1
+error: Your local changes to the following files would be overwritten by checkout:
+	style.css
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git status
+On branch master
+You are currently reverting commit a563eea.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+===== К12.v2. ИДЁТ revert, НЕСЛИТЫХ НЕТ (после git add): git merge HEAD~1
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git merge HEAD~1
+Already up to date.
+[exit 0]
+
+$ git status
+On branch master
+You are currently reverting commit fed38f8.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+===== К12.v3. ИДЁТ revert, НЕСЛИТЫХ НЕТ (после git add): git revert HEAD
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git revert HEAD
+error: your local changes would be overwritten by revert.
+hint: commit your changes or stash them to proceed.
+fatal: revert failed
+[exit 128]
+
+$ git status
+On branch master
+You are currently reverting commit c896ebf.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+===== К12.v4. ИДЁТ revert, НЕСЛИТЫХ НЕТ (после git add): git cherry-pick HEAD~1
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git cherry-pick HEAD~1
+error: your local changes would be overwritten by cherry-pick.
+hint: commit your changes or stash them to proceed.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git status
+On branch master
+You are currently reverting commit fd39545.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+===== К12.v5. ИДЁТ revert, НЕСЛИТЫХ НЕТ (после git add): git rebase HEAD~1
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git rebase HEAD~1
+error: cannot rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+[exit 1]
+
+$ git status
+On branch master
+You are currently reverting commit 6f89eec.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+[exit 0]
+
+===== К12.v6. ИДЁТ revert, НЕСЛИТЫХ НЕТ (после git add): git stash
+$ git status --short
+M  style.css
+[exit 0]
+
+$ git stash
+Saved working directory and index state WIP on master: 7167ec1 красный текст
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К12.c1. ИДЁТ cherry-pick, НЕСЛИТЫХ НЕТ (после git add): git checkout feature
+$ git status --short
+M  app.js
+[exit 0]
+
+$ git checkout feature
+error: Your local changes to the following files would be overwritten by checkout:
+	app.js
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git status
+On branch master
+You are currently cherry-picking commit e8f5064.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+[exit 0]
+
+===== К12.c2. ИДЁТ cherry-pick, НЕСЛИТЫХ НЕТ (после git add): git merge feature
+$ git status --short
+M  app.js
+[exit 0]
+
+$ git merge feature
+fatal: You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists).
+Please, commit your changes before you merge.
+[exit 128]
+
+$ git status
+On branch master
+You are currently cherry-picking commit 05685ec.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+[exit 0]
+
+===== К12.c3. ИДЁТ cherry-pick, НЕСЛИТЫХ НЕТ (после git add): git revert HEAD
+$ git status --short
+M  app.js
+[exit 0]
+
+$ git revert HEAD
+error: your local changes would be overwritten by revert.
+hint: commit your changes or stash them to proceed.
+fatal: revert failed
+[exit 128]
+
+$ git status
+On branch master
+You are currently cherry-picking commit 36e02be.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+[exit 0]
+
+===== К12.c4. ИДЁТ cherry-pick, НЕСЛИТЫХ НЕТ (после git add): git cherry-pick feature
+$ git status --short
+M  app.js
+[exit 0]
+
+$ git cherry-pick feature
+error: your local changes would be overwritten by cherry-pick.
+hint: commit your changes or stash them to proceed.
+fatal: cherry-pick failed
+[exit 128]
+
+$ git status
+On branch master
+You are currently cherry-picking commit e3b657b.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+[exit 0]
+
+===== К12.c5. ИДЁТ cherry-pick, НЕСЛИТЫХ НЕТ (после git add): git rebase feature
+$ git status --short
+M  app.js
+[exit 0]
+
+$ git rebase feature
+error: cannot rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+[exit 1]
+
+$ git status
+On branch master
+You are currently cherry-picking commit f4da665.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+[exit 0]
+
+===== К12.c6. ИДЁТ cherry-pick, НЕСЛИТЫХ НЕТ (после git add): git stash
+$ git status --short
+M  app.js
+[exit 0]
+
+$ git stash
+Saved working directory and index state WIP on master: ddb8170 master: v2
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К12.m1b. ИДЁТ merge, НЕСЛИТЫХ НЕТ, разрешённый файл отличается от обеих веток: git checkout conflict-demo
+$ git checkout conflict-demo
+error: Your local changes to the following files would be overwritten by checkout:
+	style.css
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+[exit 0]
+
+===== К12.m6b. ИДЁТ merge, НЕСЛИТЫХ НЕТ: git stash, затем stash list, stash pop
+$ git stash
+Saved working directory and index state WIP on master: 7212d44 сузить отступы
+[exit 0]
+
+$ ls .git | grep MERGE; echo ---
+---
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 7212d44 сузить отступы
+[exit 0]
+
+$ git stash pop
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (4c148ba99db3bdb3fd19fb842b961b913c4d89a4)
+[exit 0]
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+===== К13.v. CHECKOUT -B посреди конфликта: revert
+$ git checkout -b other
+Switched to a new branch 'other'
+warning: cancelling a revert in progress
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+---
+[exit 0]
+
+$ git status
+On branch other
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+  master
+* other
+[exit 0]
+
+===== К13.c. CHECKOUT -B посреди конфликта: cherry-pick
+$ git checkout -b other
+Switched to a new branch 'other'
+warning: cancelling a cherry picking in progress
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+---
+[exit 0]
+
+$ git status
+On branch other
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+  feature
+  master
+* other
+[exit 0]
+
+===== К13.b. CHECKOUT -B посреди конфликта: rebase
+$ git checkout -b other
+Switched to a new branch 'other'
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+rebase-merge
+---
+[exit 0]
+
+$ git status
+On branch other
+Last command done (1 command done):
+   pick 023e640 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick ee9a707 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on 'b010cba'.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+  feature
+  master
+* other
+[exit 0]
+
+===== К13.s. CHECKOUT -B посреди конфликта: тайник
+$ git checkout -b other
+Switched to a new branch 'other'
+[exit 0]
+
+$ ls .git | grep -E 'MERGE_HEAD|REVERT_HEAD|CHERRY_PICK_HEAD|rebase-merge|sequencer'; echo ---
+---
+[exit 0]
+
+$ git status
+On branch other
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+  feature
+  master
+* other
+[exit 0]
+
+===== К14.1. REBASE: reset --hard посреди конфликта, затем --continue
+$ git reset --hard
+HEAD is now at f98bfb1 master: v2
+[exit 0]
+
+$ git rebase --continue
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline --all --graph
+* c7300a0 (HEAD -> feature) Добавить страницу «О проекте»
+* f98bfb1 (master) master: v2
+* fb8f887 Добавить README
+* 5e9ee52 Базовая версия приложения
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+===== К14.2. REBASE: reset --hard посреди конфликта, затем --skip
+$ git reset --hard
+HEAD is now at e8db6ca master: v2
+[exit 0]
+
+$ git rebase --skip
+Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline --all --graph
+* 39fae13 (HEAD -> feature) Добавить страницу «О проекте»
+* e8db6ca (master) master: v2
+* 5eea786 Добавить README
+* 99b03ca Базовая версия приложения
+[exit 0]
+
+===== К14.3. REBASE: конфликт на втором (последнем) коммите — master сам добавил about.html
+$ git log --oneline --all --graph
+* 080bc61 (master) master: about
+* 4c5cfdb Добавить README
+| * f2c0279 (HEAD -> feature) Добавить страницу «О проекте»
+| * 91abab0 fix: опечатка в логе
+|/  
+* 79718a8 Базовая версия приложения
+[exit 0]
+
+$ git rebase master
+Rebasing (1/2)<CR>Rebasing (2/2)<CR>Auto-merging about.html
+CONFLICT (add/add): Merge conflict in about.html
+error: could not apply f2c0279... Добавить страницу «О проекте»
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply f2c0279... # Добавить страницу «О проекте»
+[exit 1]
+
+$ cat about.html
+<<<<<<< HEAD
+<h1>About</h1>
+=======
+<h1>О проекте</h1>
+>>>>>>> f2c0279 (Добавить страницу «О проекте»)
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 080bc61
+Last commands done (2 commands done):
+   pick 91abab0 # fix: опечатка в логе
+   pick f2c0279 # Добавить страницу «О проекте»
+No commands remaining.
+You are currently rebasing branch 'feature' on '080bc61'.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both added:      about.html
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+AA about.html
+[exit 0]
+
+$ git log --oneline
+36671c6 (HEAD) fix: опечатка в логе
+080bc61 (master) master: about
+4c5cfdb Добавить README
+79718a8 Базовая версия приложения
+[exit 0]
+
+$ put about.html '<h1>О проекте</h1>'; git add about.html
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 080bc61
+Last commands done (2 commands done):
+   pick 91abab0 # fix: опечатка в логе
+   pick f2c0279 # Добавить страницу «О проекте»
+No commands remaining.
+You are currently rebasing branch 'feature' on '080bc61'.
+  (all conflicts fixed: run "git rebase --continue")
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   about.html
+
+[exit 0]
+
+$ git rebase --continue
+[detached HEAD 01d93a1] Добавить страницу «О проекте»
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline --all --graph
+* 01d93a1 (HEAD -> feature) Добавить страницу «О проекте»
+* 36671c6 fix: опечатка в логе
+* 080bc61 (master) master: about
+* 4c5cfdb Добавить README
+* 79718a8 Базовая версия приложения
+[exit 0]
+
+===== К15.1. МЕТКИ: git revert HEAD~2 (Comic Sans назван относительно HEAD)
+$ git revert HEAD~2
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+error: could not revert 7433a77... сменить шрифт на Comic Sans
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ cat style.css
+<<<<<<< HEAD
+body { color: red; }
+=======
+body { color: black; }
+>>>>>>> parent of 7433a77 (сменить шрифт на Comic Sans)
+[exit 0]
+
+$ git status | head -3
+On branch master
+You are currently reverting commit 7433a77.
+  (fix conflicts and run "git revert --continue")
+[exit 0]
+
+===== К15.2. МЕТКИ: git cherry-pick feature~1
+$ git cherry-pick feature~1
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 3f2849b... fix: опечатка в логе
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+[exit 1]
+
+$ cat app.js
+<<<<<<< HEAD
+console.log("v2");
+=======
+console.log("v1"); // исправлена опечатка в логе
+>>>>>>> 3f2849b (fix: опечатка в логе)
+[exit 0]
+
+$ git status | head -3
+On branch master
+You are currently cherry-picking commit 3f2849b.
+  (fix conflicts and run "git cherry-pick --continue")
+[exit 0]
+
+===== К15.3. МЕТКИ: git merge feature~1 (для сравнения с именем ветки)
+$ git merge feature~1
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat app.js
+<<<<<<< HEAD
+console.log("v2");
+=======
+console.log("v1"); // исправлена опечатка в логе
+>>>>>>> feature~1
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Merge branch 'feature' (early part)
+
+# Conflicts:
+#	app.js
+[exit 0]
+
+===== К15.4. МЕТКИ: git pull origin master (обстановка К3.3)
+$ git config pull.rebase false; put CHANGELOG.md $'## Изменения\n- Добавлена лицензия MIT\n- Моя строка'; git commit -qam 'Моя строка'
+[exit 0]
+
+$ git pull origin master
+From /work/l4/origin
+ * branch            master     -> FETCH_HEAD
+   6eec2f1..bbc83ed  master     -> origin/master
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat CHANGELOG.md
+## Изменения
+- Добавлена лицензия MIT
+<<<<<<< HEAD
+- Моя строка
+=======
+- Правка коллеги №2
+>>>>>>> bbc83ed9ebe3fb136b362cf1566b478ce0efd661
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Merge branch 'master' of /work/l4/origin
+
+# Conflicts:
+#	CHANGELOG.md
+[exit 0]
+
+$ git merge --abort; git fetch -q; git merge origin/master
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ cat CHANGELOG.md
+## Изменения
+- Добавлена лицензия MIT
+<<<<<<< HEAD
+- Моя строка
+=======
+- Правка коллеги №2
+>>>>>>> origin/master
+[exit 0]
+
+$ cat .git/MERGE_MSG
+Merge remote-tracking branch 'origin/master'
+
+# Conflicts:
+#	CHANGELOG.md
+[exit 0]
+
+===== К16.1. НОВИЧКИ: git pull --abort, git merge --skip (посреди слияния)
+$ git pull --abort
+error: unknown option `abort'
+usage: git pull [<options>] [<repository> [<refspec>...]]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]progress       force progress reporting
+    --[no-]recurse-submodules[=<on-demand>]
+                          control for recursive fetching of submodules
+
+Options related to merging
+    -r, --[no-]rebase[=(false|true|merges|interactive)]
+                          incorporate changes by rebasing rather than merging
+    -n                    do not show a diffstat at the end of the merge
+    --[no-]stat           show a diffstat at the end of the merge
+    --[no-]compact-summary
+                          show a compact-summary at the end of the merge
+    --[no-]log[=<n>]      add (at most <n>) entries from shortlog to merge commit message
+    --[no-]signoff[=...]  add a Signed-off-by trailer
+    --[no-]squash         create a single commit instead of doing a merge
+    --[no-]commit         perform a commit if the merge succeeds (default)
+    --[no-]edit           edit message before committing
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    --[no-]ff             allow fast-forward
+    --ff-only             abort if fast-forward is not possible
+    --[no-]verify         control use of pre-merge-commit and commit-msg hooks
+    --[no-]verify-signatures
+                          verify that the named commit has a valid GPG signature
+    --[no-]autostash      automatically stash/stash pop before and after
+    -s, --[no-]strategy <strategy>
+                          merge strategy to use
+    -X, --[no-]strategy-option <option=value>
+                          option for selected merge strategy
+    -S, --[no-]gpg-sign[=<key-id>]
+                          GPG sign commit
+    --[no-]allow-unrelated-histories
+                          allow merging unrelated histories
+
+Options related to fetching
+    --[no-]all            fetch from all remotes
+    -a, --[no-]append     append to .git/FETCH_HEAD instead of overwriting
+    --[no-]upload-pack <path>
+                          path to upload pack on remote end
+    -f, --[no-]force      force overwrite of local branch
+    -t, --[no-]tags       fetch all tags and associated objects
+    -p, --[no-]prune      prune remote-tracking branches no longer on remote
+    -j, --[no-]jobs[=<n>] number of submodules pulled in parallel
+    --[no-]dry-run        dry run
+    -k, --[no-]keep       keep downloaded pack
+    --[no-]depth <depth>  deepen history of shallow clone
+    --[no-]shallow-since <time>
+                          deepen history of shallow repository based on time
+    --[no-]shallow-exclude <ref>
+                          deepen history of shallow clone, excluding ref
+    --[no-]deepen <n>     deepen history of shallow clone
+    --unshallow           convert to a complete repository
+    --[no-]update-shallow accept refs that update .git/shallow
+    --refmap <refmap>     specify fetch refmap
+    -o, --[no-]server-option <server-specific>
+                          option to transmit
+    -4, --[no-]ipv4       use IPv4 addresses only
+    -6, --[no-]ipv6       use IPv6 addresses only
+    --[no-]negotiation-tip <revision>
+                          report that we have only objects reachable from this object
+    --[no-]show-forced-updates
+                          check for forced-updates on all updated branches
+    --[no-]set-upstream   set upstream for git pull/fetch
+
+[exit 129]
+
+$ git merge --skip
+error: unknown option `skip'
+usage: git merge [<options>] [<commit>...]
+   or: git merge --abort
+   or: git merge --continue
+
+    -n                    do not show a diffstat at the end of the merge
+    --[no-]stat           show a diffstat at the end of the merge
+    --[no-]summary        (synonym to --stat)
+    --[no-]compact-summary
+                          show a compact-summary at the end of the merge
+    --[no-]log[=<n>]      add (at most <n>) entries from shortlog to merge commit message
+    --[no-]squash         create a single commit instead of doing a merge
+    --[no-]commit         perform a commit if the merge succeeds (default)
+    -e, --[no-]edit       edit message before committing
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    --[no-]ff             allow fast-forward (default)
+    --ff-only             abort if fast-forward is not possible
+    --[no-]rerere-autoupdate
+                          update the index with reused conflict resolution if possible
+    --[no-]verify-signatures
+                          verify that the named commit has a valid GPG signature
+    -s, --[no-]strategy <strategy>
+                          merge strategy to use
+    -X, --[no-]strategy-option <option=value>
+                          option for selected merge strategy
+    -m, --[no-]message <message>
+                          merge commit message (for a non-fast-forward merge)
+    -F, --file <path>     read message from file
+    --[no-]into-name <name>
+                          use <name> instead of the real target
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]abort          abort the current in-progress merge
+    --[no-]quit           --abort but leave index and working tree alone
+    --[no-]continue       continue the current in-progress merge
+    --[no-]allow-unrelated-histories
+                          allow merging unrelated histories
+    --[no-]progress       force progress reporting
+    -S, --[no-]gpg-sign[=<key-id>]
+                          GPG sign commit
+    --[no-]autostash      automatically stash/stash pop before and after
+    --[no-]overwrite-ignore
+                          update ignored files (default)
+    --[no-]signoff        add a Signed-off-by trailer
+    --no-verify           bypass pre-merge-commit and commit-msg hooks
+    --verify              opposite of --no-verify
+
+[exit 129]
+
+$ git merge --quit --abort
+fatal: --abort expects no arguments
+
+usage: git merge [<options>] [<commit>...]
+   or: git merge --abort
+   or: git merge --continue
+
+    -n                    do not show a diffstat at the end of the merge
+    --[no-]stat           show a diffstat at the end of the merge
+    --[no-]summary        (synonym to --stat)
+    --[no-]compact-summary
+                          show a compact-summary at the end of the merge
+    --[no-]log[=<n>]      add (at most <n>) entries from shortlog to merge commit message
+    --[no-]squash         create a single commit instead of doing a merge
+    --[no-]commit         perform a commit if the merge succeeds (default)
+    -e, --[no-]edit       edit message before committing
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    --[no-]ff             allow fast-forward (default)
+    --ff-only             abort if fast-forward is not possible
+    --[no-]rerere-autoupdate
+                          update the index with reused conflict resolution if possible
+    --[no-]verify-signatures
+                          verify that the named commit has a valid GPG signature
+    -s, --[no-]strategy <strategy>
+                          merge strategy to use
+    -X, --[no-]strategy-option <option=value>
+                          option for selected merge strategy
+    -m, --[no-]message <message>
+                          merge commit message (for a non-fast-forward merge)
+    -F, --file <path>     read message from file
+    --[no-]into-name <name>
+                          use <name> instead of the real target
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]abort          abort the current in-progress merge
+    --[no-]quit           --abort but leave index and working tree alone
+    --[no-]continue       continue the current in-progress merge
+    --[no-]allow-unrelated-histories
+                          allow merging unrelated histories
+    --[no-]progress       force progress reporting
+    -S, --[no-]gpg-sign[=<key-id>]
+                          GPG sign commit
+    --[no-]autostash      automatically stash/stash pop before and after
+    --[no-]overwrite-ignore
+                          update ignored files (default)
+    --[no-]signoff        add a Signed-off-by trailer
+    --no-verify           bypass pre-merge-commit and commit-msg hooks
+    --verify              opposite of --no-verify
+
+[exit 129]
+
+===== К16.2. НОВИЧКИ: git stash drop при неслитых путях (конфликт тайника)
+$ git stash drop
+Dropped refs/stash@{0} (8648bfb85fac4972a7efe335ba0c154f09c8036d)
+[exit 0]
+
+$ git status --short
+UU app.js
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+===== К16.3. НОВИЧКИ: повторный git stash pop после разрешения без drop
+$ put app.js 'console.log("v1"); // исправлена опечатка в логе // локальная правка'; git add app.js
+[exit 0]
+
+$ git stash pop
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git status --short
+UU app.js
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 074863f Добавить README
+[exit 0]
+
+$ git commit -qm 'разрешил'; git stash pop
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	app.js
+error: could not write index
+app.js: needs merge
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ cat app.js
+<<<<<<< Updated upstream
+console.log("v1"); // исправлена опечатка в логе // локальная правка
+=======
+console.log("v1"); // локальная правка, ещё не готова коммититься
+>>>>>>> Stashed changes
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 074863f Добавить README
+[exit 0]
+
+===== К16.m. НОВИЧКИ: stash pop / apply посреди конфликта merge (в стопке — тайник с новым файлом junk.txt)
+$ git stash list
+stash@{0}: On master: для pop
+[exit 0]
+
+$ git stash pop
+error: could not write index
+style.css: needs merge
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash apply
+error: could not write index
+style.css: needs merge
+[exit 1]
+
+$ git stash list
+stash@{0}: On master: для pop
+[exit 0]
+
+$ git add -A; git status --short; git stash pop
+M  style.css
+Already up to date.
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+	modified:   style.css
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	junk.txt
+
+Dropped refs/stash@{0} (28d1eb157ecc0ec001a6e58be6f189492b043898)
+[exit 0]
+
+$ git status --short; git stash list
+M  style.css
+?? junk.txt
+[exit 0]
+
+===== К16.v. НОВИЧКИ: stash pop / apply посреди конфликта revert (в стопке — тайник с новым файлом junk.txt)
+$ git stash list
+stash@{0}: On master: для pop
+[exit 0]
+
+$ git stash pop
+error: could not write index
+style.css: needs merge
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash apply
+error: could not write index
+style.css: needs merge
+[exit 1]
+
+$ git stash list
+stash@{0}: On master: для pop
+[exit 0]
+
+$ git add -A; git status --short; git stash pop
+M  style.css
+Already up to date.
+On branch master
+You are currently reverting commit 4403ff0.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   style.css
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	junk.txt
+
+Dropped refs/stash@{0} (9300e8d3509348291c5358a5d7c2c969adb8e86b)
+[exit 0]
+
+$ git status --short; git stash list
+M  style.css
+?? junk.txt
+[exit 0]
+
+===== К16.c. НОВИЧКИ: stash pop / apply посреди конфликта cherry-pick (в стопке — тайник с новым файлом junk.txt)
+$ git stash list
+stash@{0}: On master: для pop
+[exit 0]
+
+$ git stash pop
+error: could not write index
+app.js: needs merge
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash apply
+error: could not write index
+app.js: needs merge
+[exit 1]
+
+$ git stash list
+stash@{0}: On master: для pop
+[exit 0]
+
+$ git add -A; git status --short; git stash pop
+M  app.js
+Already up to date.
+On branch master
+You are currently cherry-picking commit 6a8fc08.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Changes to be committed:
+	modified:   app.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	junk.txt
+
+Dropped refs/stash@{0} (3794e21af6578b2514498b0a00d857d8964084c4)
+[exit 0]
+
+$ git status --short; git stash list
+M  app.js
+?? junk.txt
+[exit 0]
+
+===== К16.b. НОВИЧКИ: stash pop / apply посреди конфликта rebase (в стопке — тайник с новым файлом junk.txt)
+$ git stash list
+stash@{0}: On feature: для pop
+[exit 0]
+
+$ git stash pop
+error: could not write index
+app.js: needs merge
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash apply
+error: could not write index
+app.js: needs merge
+[exit 1]
+
+$ git stash list
+stash@{0}: On feature: для pop
+[exit 0]
+
+$ git add -A; git status --short; git stash pop
+M  app.js
+Already up to date.
+interactive rebase in progress; onto 65fdd5f
+Last command done (1 command done):
+   pick a074b25 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick 3cb1fa7 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on '65fdd5f'.
+  (all conflicts fixed: run "git rebase --continue")
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   app.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	junk.txt
+
+Dropped refs/stash@{0} (2efccd34d28051517924f0c2677fecf9b224df8b)
+[exit 0]
+
+$ git status --short; git stash list
+M  app.js
+?? junk.txt
+[exit 0]
+
+===== К16.4. НОВИЧКИ: git revert --continue и --skip посреди cherry-pick
+$ git revert --continue
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	app.js
+[exit 128]
+
+$ git revert --skip
+error: no revert in progress
+fatal: revert failed
+[exit 128]
+
+$ git status | head -2
+On branch master
+You are currently cherry-picking commit 1ad7d2d.
+[exit 0]
+
+===== К16.5. НОВИЧКИ: git cherry-pick --continue и --skip посреди revert
+$ git cherry-pick --continue
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git cherry-pick --skip
+error: no cherry-pick in progress
+fatal: cherry-pick failed
+[exit 128]
+
+$ git status | head -2
+On branch master
+You are currently reverting commit 66c584d.
+[exit 0]
+
+===== К16.6. НОВИЧКИ: git revert --continue посреди cherry-pick после git add
+$ git revert --continue
+[master 08e54c3] fix: опечатка в логе
+ Date: Mon Jun 1 20:26:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git log --oneline -2
+08e54c3 (HEAD -> master) fix: опечатка в логе
+ac3f9d4 master: v2
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== К16.mh. НОВИЧКИ: git checkout HEAD -- style.css посреди конфликта merge
+$ git checkout HEAD -- style.css
+[exit 0]
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+[exit 0]
+
+===== К16.vh. НОВИЧКИ: git checkout HEAD -- style.css посреди конфликта revert
+$ git checkout HEAD -- style.css
+[exit 0]
+
+$ git status
+On branch master
+You are currently reverting commit 0733557.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+nothing to commit, working tree clean
+[exit 0]
+
+===== К16.ch. НОВИЧКИ: git checkout HEAD -- app.js посреди конфликта cherry-pick
+$ git checkout HEAD -- app.js
+[exit 0]
+
+$ git status
+On branch master
+You are currently cherry-picking commit 3b343f4.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+nothing to commit, working tree clean
+[exit 0]
+
+===== К16.bh. НОВИЧКИ: git checkout HEAD -- app.js посреди конфликта rebase
+$ git checkout HEAD -- app.js
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto 85db6a5
+Last command done (1 command done):
+   pick 3dae9e9 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick acde859 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on '85db6a5'.
+  (all conflicts fixed: run "git rebase --continue")
+
+nothing to commit, working tree clean
+[exit 0]
+
+# Блоки К17: put пишет файлы С переводом строки в конце (printf '%s\n').
+# keep-top = sed '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' — оставить верхнюю часть, как кнопка редактора.
+
+===== К17.1. ПЕРЕВОД СТРОКИ: merge
+$ cat style.css
+body { background: white; color: black; }
+<<<<<<< HEAD
+/* правка в текущей ветке: сузили отступы */
+=======
+/* правка в conflict-demo: увеличили шрифт */
+>>>>>>> conflict-demo
+[exit 0]
+
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' style.css; git diff HEAD --stat; git show HEAD:style.css | cmp - style.css && echo same-as-HEAD
+same-as-HEAD
+[exit 0]
+
+===== К17.2. ПЕРЕВОД СТРОКИ: revert
+$ cat style.css
+<<<<<<< HEAD
+body { color: red; }
+=======
+body { color: black; }
+>>>>>>> parent of 9133869 (сменить шрифт на Comic Sans)
+[exit 0]
+
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' style.css; git show HEAD:style.css | cmp - style.css && echo same-as-HEAD
+same-as-HEAD
+[exit 0]
+
+===== К17.3. ПЕРЕВОД СТРОКИ: stash pop
+$ cat app.js
+<<<<<<< Updated upstream
+console.log("v1"); // исправлена опечатка в логе
+=======
+console.log("v1"); // локальная правка, ещё не готова коммититься
+>>>>>>> Stashed changes
+[exit 0]
+
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' app.js; git show HEAD:app.js | cmp - app.js && echo same-as-HEAD
+same-as-HEAD
+[exit 0]
+
+===== К17.4. ПЕРЕВОД СТРОКИ: cherry-pick
+$ cat app.js
+<<<<<<< HEAD
+console.log("v2");
+=======
+console.log("v1"); // исправлена опечатка в логе
+>>>>>>> b3057c2 (fix: опечатка в логе)
+[exit 0]
+
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' app.js; git show HEAD:app.js | cmp - app.js && echo same-as-HEAD
+same-as-HEAD
+[exit 0]
+
+===== К17.5. ПЕРЕВОД СТРОКИ: rebase
+$ cat app.js
+<<<<<<< HEAD
+console.log("v2");
+=======
+console.log("v1"); // исправлена опечатка в логе
+>>>>>>> 8c32ea1 (fix: опечатка в логе)
+[exit 0]
+
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' app.js; git show HEAD:app.js | cmp - app.js && echo same-as-HEAD
+same-as-HEAD
+[exit 0]
+
+# Для сравнения — без перевода строки, как в К1–К6:
+
+===== К17.6. БЕЗ ПЕРЕВОДА СТРОКИ: merge, keep-top
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' style.css; git show HEAD:style.css | cmp - style.css && echo same-as-HEAD
+cmp: EOF on '-' after byte 118, in line 2
+[exit 1]
+
+$ git diff HEAD
+diff --git a/style.css b/style.css
+index 8bd1cb3..310ecb2 100644
+--- a/style.css
++++ b/style.css
+@@ -1,2 +1,2 @@
+ body { background: white; color: black; }
+-/* правка в текущей ветке: сузили отступы */
+\ No newline at end of file
++/* правка в текущей ветке: сузили отступы */
+[exit 0]
+
+===== К17.7. БЕЗ ПЕРЕВОДА СТРОКИ: rebase, keep-top
+$ sed -i '/^<<<<<<< /d; /^=======$/,/^>>>>>>> /d' app.js; git show HEAD:app.js | cmp - app.js && echo same-as-HEAD
+cmp: EOF on '-' after byte 18, in line 1
+[exit 1]
+
+===== К18.1. ДВА КОНФЛИКТНЫХ ФАЙЛА: merge (style.css и index.html)
+$ git merge conflict-demo
+Auto-merging index.html
+CONFLICT (add/add): Merge conflict in index.html
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both added:      index.html
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+AA index.html
+UU style.css
+[exit 0]
+
+$ put index.html '<h1>Мой</h1>'; git add index.html
+[exit 0]
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   style.css
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git status --short
+UU style.css
+[exit 0]
+
+$ git commit -m x
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+$ git merge --continue
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	style.css
+[exit 128]
+
+===== К18.2. ДВА КОНФЛИКТНЫХ ФАЙЛА: merge feature (app.js и README.md, add/add)
+$ git merge feature
+Auto-merging README.md
+CONFLICT (add/add): Merge conflict in README.md
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status --short
+AA README.md
+A  about.html
+UU app.js
+[exit 0]
+
+===== К19.1. MERGE --ABORT после правки другого файла посреди конфликта
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put notes.txt 'заметки, правка посреди конфликта'; put new.txt 'новый'
+[exit 0]
+
+$ git status --short
+ M notes.txt
+UU style.css
+?? new.txt
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git status --short; cat notes.txt
+ M notes.txt
+?? new.txt
+заметки, правка посреди конфликта[exit 0]
+
+===== К19.2. MERGE --ABORT после правки и git add другого файла посреди конфликта
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put notes.txt 'заметки, правка посреди конфликта'; git add notes.txt
+[exit 0]
+
+$ git status --short
+M  notes.txt
+UU style.css
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git status --short; cat notes.txt
+заметки[exit 0]
+
+===== К19.3. MERGE --ABORT после правки самого конфликтного файла (без add и после add)
+$ git merge conflict-demo
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ put style.css 'body { }'
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git status --short; cat style.css
+body { background: white; color: black; }
+/* правка в текущей ветке: сузили отступы */[exit 0]
+
+$ git merge conflict-demo; put style.css 'body { }'; git add style.css
+Auto-merging style.css
+CONFLICT (content): Merge conflict in style.css
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 0]
+
+$ git merge --abort
+[exit 0]
+
+$ git status --short; cat style.css
+body { background: white; color: black; }
+/* правка в текущей ветке: сузили отступы */[exit 0]
+
+
+===== К7.11. REFLOG: cherry-pick с конфликтом → add, git commit -m
+$ put app.js 'console.log("v2"); // исправлена опечатка в логе'; git add app.js; git commit -m 'Фикс опечатки'
+[master f4003d9] Фикс опечатки
+ Date: Mon Jun 1 10:02:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reflog -2
+f4003d9 (HEAD -> master) HEAD@{0}: commit (cherry-pick): Фикс опечатки
+2f7dd94 HEAD@{1}: commit: master: v2
+[exit 0]
+
+===== К7.12. REFLOG: revert с конфликтом → add, --continue; для сравнения — git commit -m
+$ put style.css 'body { color: black; }'; git add style.css; git revert --continue
+[master 3c5080c] Revert "сменить шрифт на Comic Sans"
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reflog -2
+3c5080c (HEAD -> master) HEAD@{0}: commit: Revert "сменить шрифт на Comic Sans"
+4ca0f90 HEAD@{1}: commit: красный текст
+[exit 0]
+
+$ put style.css 'body { color: black; }'; git add style.css; git commit -m 'Убрать Comic Sans'
+[master 3aa24ca] Убрать Comic Sans
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reflog -2
+3aa24ca (HEAD -> master) HEAD@{0}: commit: Убрать Comic Sans
+197c8ef HEAD@{1}: commit: красный текст
+[exit 0]
+

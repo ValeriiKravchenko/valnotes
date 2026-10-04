@@ -1,0 +1,1928 @@
+# Прогоны git 2.53.0, 27.09.2026, LC_ALL=C, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_PAGER=cat.
+# Каталог прогона в выводе заменён на /work. Автор и коммиттер: Валера <valera@example.com>. log.decorate=short, init.defaultBranch=master.
+# Даты: каждая команда сдвигает часы на минуту от Mon Jun 1 10:00:00 2026 +0300. Хэши воспроизводимы внутри файла.
+# Исходная история — как seed раздела 8 (app.js; feature: fix + about; master: README), если не сказано иное.
+# <CR> — символ возврата каретки (\r) в выводе git (прогресс rebase), как в section8-git-runs.txt.
+# Формат: "$ команда", вывод (stdout+stderr), [exit код]. Вывод не на терминал: advice-тексты те же, цветов нет.
+
+===== О1. ВХОД: switch без --detach, switch --detach, checkout HEAD~1, повторный и соседний checkout
+$ git switch HEAD~1
+fatal: a branch is expected, got commit 'HEAD~1'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+[exit 128]
+
+$ git switch master~1
+fatal: a branch is expected, got commit 'master~1'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+[exit 128]
+
+$ git switch --detach master~1
+HEAD is now at 8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git reflog -1
+8d359c1 (HEAD) HEAD@{0}: checkout: moving from master to master~1
+[exit 0]
+
+$ git status
+HEAD detached at 8d359c1
+nothing to commit, working tree clean
+[exit 0]
+
+$ git switch -
+Previous HEAD position was 8d359c1 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git reflog -1
+b9731f9 (HEAD -> master) HEAD@{0}: checkout: moving from 8d359c14b555c2faceb0015231196418ee81a89d to master
+[exit 0]
+
+$ git checkout HEAD~1
+Note: switching to 'HEAD~1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at 8d359c1
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at 8d359c1)
+  feature
+  master
+[exit 0]
+
+--- повторный checkout того же коммита из отсоединённого HEAD
+$ git checkout HEAD
+[exit 0]
+
+$ git checkout HEAD
+[exit 0]
+
+$ git reflog -2
+8d359c1 (HEAD) HEAD@{0}: checkout: moving from master to HEAD~1
+b9731f9 (master) HEAD@{1}: checkout: moving from 8d359c14b555c2faceb0015231196418ee81a89d to master
+[exit 0]
+
+--- checkout другого коммита из отсоединённого HEAD — есть ли Previous HEAD position и Note
+$ git checkout feature~1
+Previous HEAD position was 8d359c1 Базовая версия приложения
+HEAD is now at 59802bc fix: опечатка в логе
+[exit 0]
+
+$ git reflog -1
+59802bc (HEAD) HEAD@{0}: checkout: moving from 8d359c14b555c2faceb0015231196418ee81a89d to feature~1
+[exit 0]
+
+$ git status
+HEAD detached at 59802bc
+nothing to commit, working tree clean
+[exit 0]
+
+--- checkout <ветка>, указывающей на тот же коммит, что и HEAD
+$ git checkout feature~1
+HEAD is now at 59802bc fix: опечатка в логе
+[exit 0]
+
+$ git branch same feature~1
+[exit 0]
+
+$ git checkout same
+Switched to branch 'same'
+[exit 0]
+
+$ git checkout master
+Switched to branch 'master'
+[exit 0]
+
+$ git branch -D same
+Deleted branch same (was 59802bc).
+[exit 0]
+
+===== О2. LOG в отсоединённом HEAD: подписи, когда на том же коммите стоит ветка
+$ git checkout --detach master
+HEAD is now at b9731f9 Добавить README
+[exit 0]
+
+$ git log --oneline -1
+b9731f9 (HEAD, master) Добавить README
+[exit 0]
+
+$ git status
+HEAD detached at refs/heads/master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at refs/heads/master)
+  feature
+  master
+[exit 0]
+
+$ git log --oneline --all --graph
+* b9731f9 (HEAD, master) Добавить README
+| * 890beb2 (feature) Добавить страницу «О проекте»
+| * 59802bc fix: опечатка в логе
+|/  
+* 8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git checkout master
+Switched to branch 'master'
+[exit 0]
+
+===== О3. COMMIT в отсоединённом HEAD: 2 коммита, status, branch, log, reflog, leaving 2 commits
+$ git checkout -q master~1
+[exit 0]
+
+$ echo a >> app.js; git commit -qam "Эксперимент 1"; git log --oneline -1
+5a1675c (HEAD) Эксперимент 1
+[exit 0]
+
+$ echo b >> app.js; git commit -am "Эксперимент 2"
+[detached HEAD 5327720] Эксперимент 2
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+$ git status
+HEAD detached from 8d359c1
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached from 8d359c1)
+  feature
+  master
+[exit 0]
+
+$ git log --oneline --all
+5327720 (HEAD) Эксперимент 2
+5a1675c Эксперимент 1
+b9731f9 (master) Добавить README
+890beb2 (feature) Добавить страницу «О проекте»
+59802bc fix: опечатка в логе
+8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git reflog -4
+5327720 (HEAD) HEAD@{0}: commit: Эксперимент 2
+5a1675c HEAD@{1}: commit: Эксперимент 1
+8d359c1 HEAD@{2}: checkout: moving from master to master~1
+b9731f9 (master) HEAD@{3}: checkout: moving from b9731f968f8c951aaa3d5c83015d85447d76d854 to master
+[exit 0]
+
+$ git checkout master
+Warning: you are leaving 2 commits behind, not connected to
+any of your branches:
+
+  5327720 Эксперимент 2
+  5a1675c Эксперимент 1
+
+If you want to keep them by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> 5327720
+
+Switched to branch 'master'
+[exit 0]
+
+$ git reflog -1
+b9731f9 (HEAD -> master) HEAD@{0}: checkout: moving from 53277207120043949c91eec343b27d3af695527a to master
+[exit 0]
+
+$ git log --oneline --all
+b9731f9 (HEAD -> master) Добавить README
+890beb2 (feature) Добавить страницу «О проекте»
+59802bc fix: опечатка в логе
+8d359c1 Базовая версия приложения
+[exit 0]
+
+--- вернуть брошенные коммиты: reflog → branch <имя> <id>
+$ git reflog -5
+b9731f9 (HEAD -> master) HEAD@{0}: checkout: moving from 53277207120043949c91eec343b27d3af695527a to master
+5327720 HEAD@{1}: commit: Эксперимент 2
+5a1675c HEAD@{2}: commit: Эксперимент 1
+8d359c1 HEAD@{3}: checkout: moving from master to master~1
+b9731f9 (HEAD -> master) HEAD@{4}: checkout: moving from b9731f968f8c951aaa3d5c83015d85447d76d854 to master
+[exit 0]
+
+$ git branch rescue HEAD@{1}
+[exit 0]
+
+$ git branch
+  feature
+* master
+  rescue
+[exit 0]
+
+$ git log --oneline --all
+5327720 (rescue) Эксперимент 2
+5a1675c Эксперимент 1
+b9731f9 (HEAD -> master) Добавить README
+890beb2 (feature) Добавить страницу «О проекте»
+59802bc fix: опечатка в логе
+8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git reflog show rescue
+5327720 (rescue) rescue@{0}: branch: Created from HEAD@{1}
+[exit 0]
+
+$ git branch -D rescue
+Deleted branch rescue (was 5327720).
+[exit 0]
+
+===== О4. LEAVING: 5 и 6 брошенных коммитов (усечение списка), switch вместо checkout
+$ git checkout -q --detach master
+[exit 0]
+
+$ for i in 1 2 3 4 5; do echo $i >> app.js; git commit -qam "Опыт $i"; done; git log --oneline -1
+1f0be26 (HEAD) Опыт 5
+[exit 0]
+
+$ git switch master
+Warning: you are leaving 5 commits behind, not connected to
+any of your branches:
+
+  1f0be26 Опыт 5
+  2190297 Опыт 4
+  703dfe3 Опыт 3
+  16174e4 Опыт 2
+  a826003 Опыт 1
+
+If you want to keep them by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> 1f0be26
+
+Switched to branch 'master'
+[exit 0]
+
+$ git checkout -q --detach master
+[exit 0]
+
+$ for i in 1 2 3 4 5 6; do echo $i >> app.js; git commit -qam "Опыт $i"; done; git log --oneline -1
+b15a948 (HEAD) Опыт 6
+[exit 0]
+
+$ git checkout master
+Warning: you are leaving 6 commits behind, not connected to
+any of your branches:
+
+  b15a948 Опыт 6
+  8889b03 Опыт 5
+  48afb25 Опыт 4
+  929d63f Опыт 3
+ ... and 2 more.
+
+If you want to keep them by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> b15a948
+
+Switched to branch 'master'
+[exit 0]
+
+--- уход из отсоединённого HEAD на другой коммит (не ветку) с брошенным коммитом
+$ git checkout -q --detach master
+[exit 0]
+
+$ echo z >> app.js; git commit -qam "Опыт z"
+[exit 0]
+
+$ git checkout master~1
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  ae38b02 Опыт z
+
+If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> ae38b02
+
+HEAD is now at 8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was 8d359c1 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+--- брошенный коммит, но на него указывает тег — предупреждения нет?
+$ git checkout -q --detach master
+[exit 0]
+
+$ echo t >> app.js; git commit -qam "Опыт t"; git tag keep
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was 1efa9d6 Опыт t
+Switched to branch 'master'
+[exit 0]
+
+$ git tag -d keep
+Deleted tag 'keep' (was 1efa9d6)
+[exit 0]
+
+===== О5. CHECKOUT -b / switch -c из отсоединённого HEAD
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ echo c >> app.js; git commit -qam "Эксперимент на ветку"
+[exit 0]
+
+$ git checkout -b experiment
+Switched to a new branch 'experiment'
+[exit 0]
+
+$ git status
+On branch experiment
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline --all
+8e13e06 (HEAD -> experiment) Эксперимент на ветку
+b9731f9 (master) Добавить README
+890beb2 (feature) Добавить страницу «О проекте»
+59802bc fix: опечатка в логе
+8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git reflog -2
+8e13e06 (HEAD -> experiment) HEAD@{0}: checkout: moving from 8e13e062bc5da97a32be5d2b7aad0728ba0d19bd to experiment
+8e13e06 (HEAD -> experiment) HEAD@{1}: commit: Эксперимент на ветку
+[exit 0]
+
+$ git reflog show experiment
+8e13e06 (HEAD -> experiment) experiment@{0}: branch: Created from HEAD
+[exit 0]
+
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ git switch -c exp2
+Switched to a new branch 'exp2'
+[exit 0]
+
+$ git reflog -1
+8d359c1 (HEAD -> exp2) HEAD@{0}: checkout: moving from 8d359c14b555c2faceb0015231196418ee81a89d to exp2
+[exit 0]
+
+$ git reflog show exp2
+8d359c1 (HEAD -> exp2) exp2@{0}: branch: Created from HEAD
+[exit 0]
+
+$ git checkout master
+Switched to branch 'master'
+[exit 0]
+
+--- git branch <имя> в отсоединённом HEAD (без перехода)
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ git branch here
+[exit 0]
+
+$ git status
+HEAD detached at 8d359c1
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at 8d359c1)
+  exp2
+  experiment
+  feature
+  here
+  master
+[exit 0]
+
+$ git reflog show here
+8d359c1 (HEAD, here, exp2) here@{0}: branch: Created from HEAD
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was 8d359c1 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+===== О6. Что запрещено/иначе в отсоединённом HEAD: merge, push, pull, branch -d, commit --amend, reset --hard, rebase
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ git merge feature
+Updating 8d359c1..890beb2
+Fast-forward
+ about.html | 1 +
+ app.js     | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+ create mode 100644 about.html
+[exit 0]
+
+$ git log --oneline -1
+890beb2 (HEAD, feature) Добавить страницу «О проекте»
+[exit 0]
+
+$ git status
+HEAD detached from 8d359c1
+nothing to commit, working tree clean
+[exit 0]
+
+$ git reflog -1
+890beb2 (HEAD, feature) HEAD@{0}: merge feature: Fast-forward
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git branch -D experiment exp2 here
+Deleted branch experiment (was 8e13e06).
+Deleted branch exp2 (was 8d359c1).
+Deleted branch here (was 8d359c1).
+[exit 0]
+
+$ git checkout -q --detach master
+[exit 0]
+
+$ git branch -d master
+Deleted branch master (was b9731f9).
+[exit 0]
+
+$ git branch -D master
+error: branch 'master' not found
+[exit 1]
+
+--- ветку, на которой стоит отсоединённый HEAD, git удалить даёт; восстановим её
+$ git branch master HEAD
+[exit 0]
+
+$ git status
+HEAD detached at refs/heads/master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git push
+fatal: No configured push destination.
+Either specify the URL from the command-line or configure a remote repository using
+
+    git remote add <name> <url>
+
+and then push using the remote name
+
+    git push <name>
+
+[exit 128]
+
+$ git push origin HEAD
+fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+[exit 128]
+
+$ git pull
+You are not currently on a branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details.
+
+    git pull <remote> <branch>
+
+[exit 1]
+
+$ echo m >> app.js; git commit -qam "Опыт amend"; git commit --amend -m "Опыт amend 2"
+[detached HEAD 74ec540] Опыт amend 2
+ Date: Mon Jun 1 11:35:00 2026 +0300
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+$ git reflog -2
+74ec540 (HEAD) HEAD@{0}: commit (amend): Опыт amend 2
+4562220 HEAD@{1}: commit: Опыт amend
+[exit 0]
+
+$ git reset --hard HEAD~1
+HEAD is now at b9731f9 Добавить README
+[exit 0]
+
+$ git reflog -1
+b9731f9 (HEAD, master) HEAD@{0}: reset: moving to HEAD~1
+[exit 0]
+
+$ git status
+HEAD detached at refs/heads/master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout master
+Switched to branch 'master'
+[exit 0]
+
+===== О7. CHECKOUT с несохранёнными правками
+$ echo dirty >> README.md; git checkout master~1
+error: Your local changes to the following files would be overwritten by checkout:
+	README.md
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git checkout master
+Already on 'master'
+M	README.md
+[exit 0]
+
+$ git checkout -- README.md
+[exit 0]
+
+$ echo dirty >> app.js; git checkout feature~1
+error: Your local changes to the following files would be overwritten by checkout:
+	app.js
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git checkout -- app.js
+[exit 0]
+
+===== О8. CHECKOUT -: возврат после отсоединённого HEAD и после двух переходов
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ git checkout -
+Previous HEAD position was 8d359c1 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git checkout -
+Note: switching to '8d359c14b555c2faceb0015231196418ee81a89d'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 8d359c1 Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at 8d359c1
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -
+Previous HEAD position was 8d359c1 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git switch -
+fatal: a branch is expected, got commit '8d359c14b555c2faceb0015231196418ee81a89d'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+[exit 128]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git switch -
+fatal: a branch is expected, got commit '8d359c14b555c2faceb0015231196418ee81a89d'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+[exit 128]
+
+===== О9. BISECT: reflog, branch, status, bisect reset после ручного checkout, bisect из отсоединённого HEAD
+$ git log --oneline
+0e9b75d (HEAD -> master) c9
+40b4060 c8
+d6831c2 c7
+adf89d1 c6
+a69b192 c5
+c5cfcb0 c4
+17ba023 c3
+af9e45f c2
+c55df67 c1
+[exit 0]
+
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git reflog -1
+0e9b75d (HEAD -> master) HEAD@{0}: commit: c9
+[exit 0]
+
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+[exit 0]
+
+$ git bisect good HEAD~8
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[a69b1926fbb0df32b29d108f34c2d27f68affe36] c5
+[exit 0]
+
+$ git reflog -2
+a69b192 (HEAD) HEAD@{0}: checkout: moving from master to a69b1926fbb0df32b29d108f34c2d27f68affe36
+0e9b75d (master) HEAD@{1}: commit: c9
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ git status
+HEAD detached at a69b192
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline -1
+a69b192 (HEAD) c5
+[exit 0]
+
+$ git bisect good
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[d6831c282e3525d892e6a1508627858db03f4c35] c7
+[exit 0]
+
+$ git reflog -1
+d6831c2 (HEAD) HEAD@{0}: checkout: moving from a69b1926fbb0df32b29d108f34c2d27f68affe36 to d6831c282e3525d892e6a1508627858db03f4c35
+[exit 0]
+
+--- ручной checkout посреди bisect
+$ git checkout HEAD~1
+Previous HEAD position was d6831c2 c7
+HEAD is now at adf89d1 c6
+[exit 0]
+
+$ git status
+HEAD detached at adf89d1
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ git reflog -1
+adf89d1 (HEAD) HEAD@{0}: checkout: moving from d6831c282e3525d892e6a1508627858db03f4c35 to HEAD~1
+[exit 0]
+
+$ git bisect bad
+adf89d13deb480c9fbae1a57b434f6bc9cad9d87 is the first bad commit
+commit adf89d13deb480c9fbae1a57b434f6bc9cad9d87 (HEAD)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 12:00:00 2026 +0300
+
+    c6
+
+ log.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git bisect bad
+adf89d13deb480c9fbae1a57b434f6bc9cad9d87 is the first bad commit
+commit adf89d13deb480c9fbae1a57b434f6bc9cad9d87 (HEAD)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 12:00:00 2026 +0300
+
+    c6
+
+ log.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was adf89d1 c6
+Switched to branch 'master'
+[exit 0]
+
+$ git reflog -3
+0e9b75d (HEAD -> master) HEAD@{0}: checkout: moving from adf89d13deb480c9fbae1a57b434f6bc9cad9d87 to master
+adf89d1 HEAD@{1}: checkout: moving from d6831c282e3525d892e6a1508627858db03f4c35 to HEAD~1
+d6831c2 HEAD@{2}: checkout: moving from a69b1926fbb0df32b29d108f34c2d27f68affe36 to d6831c282e3525d892e6a1508627858db03f4c35
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+--- bisect reset <коммит>
+$ git bisect start HEAD HEAD~8
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[a69b1926fbb0df32b29d108f34c2d27f68affe36] c5
+[exit 0]
+
+$ git bisect reset HEAD~2
+Previous HEAD position was a69b192 c5
+HEAD is now at 17ba023 c3
+[exit 0]
+
+$ git status
+HEAD detached at 17ba023
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+--- bisect из отсоединённого HEAD
+$ git checkout -q HEAD~1
+[exit 0]
+
+$ git bisect start HEAD HEAD~7
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[c5cfcb0d7c131963284c86bae2265f4f69fda365] c4
+[exit 0]
+
+$ git status
+HEAD detached at c5cfcb0
+You are currently bisecting, started from branch '40b4060'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on 40b4060)
+  master
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was c5cfcb0 c4
+HEAD is now at 40b4060 c8
+[exit 0]
+
+$ git status
+HEAD detached at 40b4060
+nothing to commit, working tree clean
+[exit 0]
+
+$ git reflog -2
+40b4060 (HEAD) HEAD@{0}: checkout: moving from c5cfcb0d7c131963284c86bae2265f4f69fda365 to 40b4060f92577830e62bff0ff75886790d87820e
+c5cfcb0 HEAD@{1}: checkout: moving from 40b4060f92577830e62bff0ff75886790d87820e to c5cfcb0d7c131963284c86bae2265f4f69fda365
+[exit 0]
+
+--- коммит посреди bisect, потом bisect reset
+$ git checkout -q master
+[exit 0]
+
+$ git bisect start HEAD HEAD~8
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[a69b1926fbb0df32b29d108f34c2d27f68affe36] c5
+[exit 0]
+
+$ echo x >> log.txt; git commit -qam "правка посреди bisect"; git log --oneline -1
+90d2a13 (HEAD) правка посреди bisect
+[exit 0]
+
+$ git bisect reset
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  90d2a13 правка посреди bisect
+
+If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> 90d2a13
+
+Switched to branch 'master'
+[exit 0]
+
+$ git checkout master
+Already on 'master'
+[exit 0]
+
+--- checkout ветки посреди bisect, затем bisect reset
+$ git bisect start HEAD HEAD~8
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[a69b1926fbb0df32b29d108f34c2d27f68affe36] c5
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was a69b192 c5
+Switched to branch 'master'
+[exit 0]
+
+$ git status
+On branch master
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+===== О10. REBASE посреди работы: status, branch, log при остановке (остановка на конфликте)
+$ git checkout -q -b conf master~1; echo "console.log(1)" > app.js; git commit -qam "conf: другая строка"; git checkout -q feature
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply a3af535... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply a3af535... # fix: опечатка в логе
+[exit 1]
+
+$ git status
+interactive rebase in progress; onto a52cd89
+Last command done (1 command done):
+   pick a3af535 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick 84f9f02 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on 'a52cd89'.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+* (no branch, rebasing feature)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git log --oneline --all -4
+a52cd89 (HEAD, conf) conf: другая строка
+3e01149 (master) Добавить README
+84f9f02 (feature) Добавить страницу «О проекте»
+a3af535 fix: опечатка в логе
+[exit 0]
+
+$ git reflog -2
+a52cd89 (HEAD, conf) HEAD@{0}: rebase (start): checkout conf
+84f9f02 (feature) HEAD@{1}: checkout: moving from conf to feature
+[exit 0]
+
+$ git checkout master
+error: you need to resolve your current index first
+app.js: needs merge
+[exit 1]
+
+$ git switch master
+fatal: cannot switch branch while rebasing
+Consider "git rebase --quit" or "git worktree add".
+[exit 128]
+
+$ git rebase --abort
+[exit 0]
+
+$ git reflog -1
+84f9f02 (HEAD -> feature) HEAD@{0}: rebase (abort): returning to refs/heads/feature
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+===== О11. CHECKOUT удалённой ветки и тега (annotated): что пишет status
+$ git tag -a v2.0 -m 'Версия 2' master~1
+[exit 0]
+
+$ git checkout v2.0
+Note: switching to 'v2.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at bbff213 Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at v2.0
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at v2.0)
+  feature
+  master
+[exit 0]
+
+$ git reflog -1
+bbff213 (HEAD, tag: v2.0) HEAD@{0}: checkout: moving from master to v2.0
+[exit 0]
+
+$ git log --oneline -1
+bbff213 (HEAD, tag: v2.0) Базовая версия приложения
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was bbff213 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git update-ref refs/remotes/origin/master master~1; git checkout origin/master
+Note: switching to 'origin/master'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at bbff213 Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at origin/master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at origin/master)
+  feature
+  master
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was bbff213 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git checkout -q feature
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git checkout -q refs/heads/master; git status | head -1
+HEAD detached at refs/heads/master
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+--- checkout полного id и tags/
+$ git checkout -q $(git rev-parse master~1); git status | head -1
+HEAD detached at bbff213
+[exit 0]
+
+$ git checkout -q tags/v2.0; git status | head -1
+HEAD detached at bbff213
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+
+# Дополнение: прогоны по открытым вопросам части XII (та же обстановка, новый репозиторий, часы сдвинуты — хэши другие).
+
+===== О12. CHECKOUT tags/<тег> с ветки
+$ git tag v2.0 master~1
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git checkout tags/v2.0
+Note: switching to 'tags/v2.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at f642668 Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at v2.0
+nothing to commit, working tree clean
+[exit 0]
+
+$ git reflog -1
+f642668 (HEAD, tag: v2.0) HEAD@{0}: checkout: moving from master to tags/v2.0
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О13. Тот же коммит под другим именем: reflog и X
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ git tag t0 master~1
+[exit 0]
+
+$ git checkout t0
+HEAD is now at f642668 Базовая версия приложения
+[exit 0]
+
+$ git reflog -2
+f642668 (HEAD, tag: v2.0, tag: t0) HEAD@{0}: checkout: moving from master to master~1
+2a72b28 (master) HEAD@{1}: checkout: moving from f642668559764cd6704010c22236cb43561e0c67 to master
+[exit 0]
+
+$ git status
+HEAD detached at f642668
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О14. reflog у checkout - на коммит и у checkout --detach <ветка>
+$ git checkout -q --detach master~1
+[exit 0]
+
+$ git checkout -q -
+[exit 0]
+
+$ git checkout -
+Note: switching to 'f642668559764cd6704010c22236cb43561e0c67'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at f642668 Базовая версия приложения
+[exit 0]
+
+$ git reflog -1
+f642668 (HEAD, tag: v2.0, tag: t0) HEAD@{0}: checkout: moving from master to f642668559764cd6704010c22236cb43561e0c67
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git checkout --detach master
+HEAD is now at 2a72b28 Добавить README
+[exit 0]
+
+$ git reflog -1
+2a72b28 (HEAD, master) HEAD@{0}: checkout: moving from master to master
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О15. X после удаления или перестановки ссылки
+$ git tag t1 master~1
+[exit 0]
+
+$ git checkout -q t1
+[exit 0]
+
+$ git tag -f t1 master
+Updated tag 't1' (was f642668)
+[exit 0]
+
+$ git status
+HEAD detached at f642668
+nothing to commit, working tree clean
+[exit 0]
+
+$ git tag -d t1
+Deleted tag 't1' (was 2a72b28)
+[exit 0]
+
+$ git status
+HEAD detached at f642668
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git checkout -q --detach feature
+[exit 0]
+
+$ git branch -D feature
+Deleted branch feature (was 2734c17).
+[exit 0]
+
+$ git status
+HEAD detached at 2734c17
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch feature HEAD
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О16. Правка в рабочем дереве при переходе на коммит и с коммита на ветку
+$ echo x >> README.md; git checkout master~1
+error: Your local changes to the following files would be overwritten by checkout:
+	README.md
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git checkout master
+Already on 'master'
+M	README.md
+[exit 0]
+
+$ git checkout -- README.md
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ echo x >> app.js; git checkout master~1
+Note: switching to 'master~1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at f642668 Базовая версия приложения
+M	app.js
+[exit 0]
+
+$ git checkout -- app.js
+[exit 0]
+
+$ git checkout -q --detach feature~1
+[exit 0]
+
+$ echo x >> app.js; git checkout master
+error: Your local changes to the following files would be overwritten by checkout:
+	app.js
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git checkout -- app.js
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О17. switch <тег>
+$ git switch v2.0
+fatal: a branch is expected, got tag 'v2.0'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+[exit 128]
+
+===== О18. cherry-pick в отсоединённом HEAD
+$ git checkout -q --detach master
+[exit 0]
+
+$ git cherry-pick feature
+[detached HEAD 42d8202] Добавить страницу «О проекте»
+ Date: Tue Jun 2 13:49:40 2026 +0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 about.html
+[exit 0]
+
+$ git reflog -1
+42d8202 (HEAD) HEAD@{0}: cherry-pick: Добавить страницу «О проекте»
+[exit 0]
+
+$ git status
+HEAD detached from refs/heads/master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О19. stash -m в отсоединённом HEAD
+$ git checkout -q --detach master
+[exit 0]
+
+$ echo x >> app.js; git stash -m "с сообщением"
+Saved working directory and index state On (no branch): с сообщением
+[exit 0]
+
+$ git stash list
+stash@{0}: On (no branch): с сообщением
+[exit 0]
+
+$ git stash drop
+Dropped refs/stash@{0} (c2c0d08e33b243f259dde7df6a1cfbb13d3babeb)
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О20. reset --soft и reset в отсоединённом HEAD
+$ git checkout -q --detach master
+[exit 0]
+
+$ git reset --soft HEAD~1
+[exit 0]
+
+$ git status
+HEAD detached from refs/heads/master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	new file:   README.md
+
+[exit 0]
+
+$ git reflog -1
+f642668 (HEAD, tag: v2.0, tag: t0) HEAD@{0}: reset: moving to HEAD~1
+[exit 0]
+
+$ git reset HEAD@{1}
+[exit 0]
+
+$ git status
+HEAD detached at refs/heads/master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git reflog -1
+2a72b28 (HEAD, master) HEAD@{0}: reset: moving to HEAD@{1}
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О21. rebase с конфликтом, начатый с отсоединённого HEAD
+$ git checkout -q -b conf master~1; echo "console.log(1)" > app.js; git commit -qam "conf: другая строка"; git checkout -q master
+[exit 0]
+
+$ git checkout -q --detach feature
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 31d982f... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 31d982f... # fix: опечатка в логе
+[exit 1]
+
+$ git status
+interactive rebase in progress; onto d4a5777
+Last command done (1 command done):
+   pick 31d982f # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick 2734c17 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git branch
+* (no branch, rebasing detached HEAD refs/heads/feature)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git checkout master
+error: you need to resolve your current index first
+app.js: needs merge
+[exit 1]
+
+$ git rebase --abort
+[exit 0]
+
+$ git reflog -1
+2734c17 (HEAD, feature) HEAD@{0}: rebase (abort): returning to 2734c1728c9621a57bf0b5fa13a06dabb7e3db17
+[exit 0]
+
+$ git status
+HEAD detached at refs/heads/feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О22. Семь брошенных коммитов
+$ git checkout -q --detach master
+[exit 0]
+
+$ for i in 1 2 3 4 5 6 7; do echo $i >> app.js; git commit -qam "Опыт $i"; done; git log --oneline -1
+79386ed (HEAD) Опыт 7
+[exit 0]
+
+$ git checkout master
+Warning: you are leaving 7 commits behind, not connected to
+any of your branches:
+
+  79386ed Опыт 7
+  9e39861 Опыт 6
+  d7f4810 Опыт 5
+  36ed8a4 Опыт 4
+ ... and 3 more.
+
+If you want to keep them by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> 79386ed
+
+Switched to branch 'master'
+[exit 0]
+
+===== О23. checkout HEAD@{n} и checkout --detach без ссылки
+$ git checkout HEAD@{1}
+Note: switching to 'HEAD@{1}'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 79386ed Опыт 7
+[exit 0]
+
+$ git status
+HEAD detached at 79386ed
+nothing to commit, working tree clean
+[exit 0]
+
+$ git reflog -1
+79386ed (HEAD) HEAD@{0}: checkout: moving from master to HEAD@{1}
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git checkout --detach
+HEAD is now at 2a72b28 Добавить README
+[exit 0]
+
+$ git status
+HEAD detached at 2a72b28
+nothing to commit, working tree clean
+[exit 0]
+
+$ git reflog -1
+2a72b28 (HEAD, master) HEAD@{0}: checkout: moving from master to HEAD
+[exit 0]
+
+$ git checkout master
+Switched to branch 'master'
+[exit 0]
+
+
+# Дополнение 2: прогоны по оставшимся вопросам части XII (новый репозиторий, часы сдвинуты — хэши другие).
+# В О24 код выхода — у конвейера с cat, поэтому отказ checkout показан с [exit 0]; настоящий код — 1 (см. О7).
+
+===== О24. Порядок M<TAB><файл> и строк перехода при построчном выводе (stdbuf -oL -eL)
+$ echo x >> app.js; stdbuf -oL -eL git checkout master~1 2>&1 | cat
+M	app.js
+Note: switching to 'master~1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 479d20e Базовая версия приложения
+[exit 0]
+
+$ stdbuf -oL -eL git checkout master 2>&1 | cat
+M	app.js
+Previous HEAD position was 479d20e Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ stdbuf -oL -eL git checkout master 2>&1 | cat
+M	app.js
+Already on 'master'
+[exit 0]
+
+$ stdbuf -oL -eL git checkout --detach feature 2>&1 | cat
+error: Your local changes to the following files would be overwritten by checkout:
+	app.js
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 0]
+
+$ stdbuf -oL -eL git checkout master 2>&1 | cat
+M	app.js
+Already on 'master'
+[exit 0]
+
+$ git checkout -- app.js
+[exit 0]
+
+===== О25. reflog у stash -m и stash pop в отсоединённом HEAD
+$ git checkout -q --detach master
+[exit 0]
+
+$ echo x >> app.js; git stash -m x
+Saved working directory and index state On (no branch): x
+[exit 0]
+
+$ git reflog -1
+9efda64 (HEAD, master) HEAD@{0}: checkout: moving from master to master
+[exit 0]
+
+$ git stash pop
+HEAD detached at refs/heads/master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (84f741e627f5038eadec32212b7550af13979972)
+[exit 0]
+
+$ git reflog -1
+9efda64 (HEAD, master) HEAD@{0}: checkout: moving from master to master
+[exit 0]
+
+$ git checkout -- app.js; git checkout -q master
+[exit 0]
+
+===== О26. rebase с конфликтом из отсоединённого HEAD (--detach <ветка>): start, --continue
+$ git checkout -q -b conf master~1; echo "console.log(1)" > app.js; git commit -qam "conf: другая строка"; git checkout -q master
+[exit 0]
+
+$ git checkout -q --detach feature
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply d9a132b... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply d9a132b... # fix: опечатка в логе
+[exit 1]
+
+$ git reflog -1
+db6f304 (HEAD, conf) HEAD@{0}: rebase (start): checkout conf
+[exit 0]
+
+$ echo "console.log(1)" > app.js; git add app.js; GIT_EDITOR=true git rebase --continue
+Rebasing (2/2)<CR>Successfully rebased and updated detached HEAD.
+[exit 0]
+
+$ git reflog -4
+40d17fd (HEAD) HEAD@{0}: rebase (pick): Добавить страницу «О проекте»
+db6f304 (conf) HEAD@{1}: rebase (start): checkout conf
+2d97f01 (feature) HEAD@{2}: checkout: moving from master to feature
+9efda64 (master) HEAD@{3}: checkout: moving from conf to master
+[exit 0]
+
+$ git status
+HEAD detached from refs/heads/feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached from refs/heads/feature)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О27. то же, --skip
+$ git checkout -q --detach feature
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply d9a132b... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply d9a132b... # fix: опечатка в логе
+[exit 1]
+
+$ git rebase --skip
+Rebasing (2/2)<CR>Successfully rebased and updated detached HEAD.
+[exit 0]
+
+$ git reflog -3
+60c5a8f (HEAD) HEAD@{0}: rebase (pick): Добавить страницу «О проекте»
+db6f304 (conf) HEAD@{1}: rebase (start): checkout conf
+2d97f01 (feature) HEAD@{2}: checkout: moving from master to feature
+[exit 0]
+
+$ git status
+HEAD detached from refs/heads/feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О28. rebase с конфликтом из checkout <id7> и из checkout <тег>: git branch, status
+$ git checkout -q $(git rev-parse --short feature)
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply d9a132b... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply d9a132b... # fix: опечатка в логе
+[exit 1]
+
+$ git branch
+* (no branch, rebasing detached HEAD 2d97f01)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git status
+interactive rebase in progress; onto db6f304
+Last command done (1 command done):
+   pick d9a132b # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick 2d97f01 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git rebase --abort
+[exit 0]
+
+$ git reflog -1
+2d97f01 (HEAD, feature) HEAD@{0}: rebase (abort): returning to 2d97f019ae502a9a1d1dbe033cb88a1ead6f7825
+[exit 0]
+
+$ git status
+HEAD detached at 2d97f01
+nothing to commit, working tree clean
+[exit 0]
+
+$ git tag vf feature
+[exit 0]
+
+$ git checkout -q vf
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply d9a132b... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply d9a132b... # fix: опечатка в логе
+[exit 1]
+
+$ git branch
+* (no branch, rebasing detached HEAD 2d97f01)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git rebase --abort
+[exit 0]
+
+$ git status
+HEAD detached at 2d97f01
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+
+# Дополнение 3: rebase с конфликтом из отсоединённого HEAD — --continue с выжившим коммитом и вход через тег с ветки (новый репозиторий, хэши другие).
+
+$ git checkout -q -b conf master~1; echo "console.log(1)" > app.js; git commit -qam "conf: другая строка"; git checkout -q master
+[exit 0]
+
+===== О29. rebase с конфликтом из --detach <ветка>: --continue, коммит после разрешения выживает
+$ git checkout -q --detach feature
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 5668a13... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 5668a13... # fix: опечатка в логе
+[exit 1]
+
+$ echo 'console.log("both")' > app.js; git add app.js; GIT_EDITOR=true git rebase --continue
+[detached HEAD 474ce06] fix: опечатка в логе
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Rebasing (2/2)<CR>Successfully rebased and updated detached HEAD.
+[exit 0]
+
+$ git reflog -4
+f7c868c (HEAD) HEAD@{0}: rebase (pick): Добавить страницу «О проекте»
+474ce06 HEAD@{1}: rebase (continue): fix: опечатка в логе
+35e30b4 (conf) HEAD@{2}: rebase (start): checkout conf
+974a84b (feature) HEAD@{3}: checkout: moving from master to feature
+[exit 0]
+
+$ git status
+HEAD detached from refs/heads/feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached from refs/heads/feature)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git log --oneline -3
+f7c868c (HEAD) Добавить страницу «О проекте»
+474ce06 fix: опечатка в логе
+35e30b4 (conf) conf: другая строка
+[exit 0]
+
+$ git checkout master
+Warning: you are leaving 2 commits behind, not connected to
+any of your branches:
+
+  f7c868c Добавить страницу «О проекте»
+  474ce06 fix: опечатка в логе
+
+If you want to keep them by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> f7c868c
+
+Switched to branch 'master'
+[exit 0]
+
+===== О30. rebase с конфликтом после checkout <тег> с ветки: строка git branch, abort
+$ git tag vf feature
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+$ git checkout -q vf
+[exit 0]
+
+$ git reflog -1
+974a84b (HEAD, tag: vf, feature) HEAD@{0}: checkout: moving from master to vf
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 5668a13... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 5668a13... # fix: опечатка в логе
+[exit 1]
+
+$ git branch
+* (no branch, rebasing detached HEAD vf)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git rebase --abort
+[exit 0]
+
+$ git reflog -1
+974a84b (HEAD, tag: vf, feature) HEAD@{0}: rebase (abort): returning to 974a84b5893f22bde5d5786457189cd664629ccb
+[exit 0]
+
+$ git status
+HEAD detached at vf
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at vf)
+  conf
+  feature
+  master
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+
+===== О31. то же после checkout <тег>: --continue с выжившим коммитом
+$ git checkout -q vf
+[exit 0]
+
+$ git rebase conf
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply 5668a13... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 5668a13... # fix: опечатка в логе
+[exit 1]
+
+$ echo 'console.log("both")' > app.js; git add app.js; GIT_EDITOR=true git rebase --continue
+[detached HEAD 4875253] fix: опечатка в логе
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Rebasing (2/2)<CR>Successfully rebased and updated detached HEAD.
+[exit 0]
+
+$ git reflog -4
+76450cf (HEAD) HEAD@{0}: rebase (pick): Добавить страницу «О проекте»
+4875253 HEAD@{1}: rebase (continue): fix: опечатка в логе
+35e30b4 (conf) HEAD@{2}: rebase (start): checkout conf
+974a84b (tag: vf, feature) HEAD@{3}: checkout: moving from master to vf
+[exit 0]
+
+$ git status
+HEAD detached from vf
+nothing to commit, working tree clean
+[exit 0]
+
+$ git checkout -q master
+[exit 0]
+

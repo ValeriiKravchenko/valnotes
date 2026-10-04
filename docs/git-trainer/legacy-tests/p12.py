@@ -1,0 +1,83 @@
+import sys, json
+from playwright.sync_api import sync_playwright
+res=[]
+def check(name, cond, extra=""):
+    res.append(bool(cond)); print(("  PASS " if cond else "  FAIL ") + name + (f"  [{extra}]" if extra else ""))
+U11="file:///mnt/user-data/outputs/git-trenazher_15.html"; U12="file:///mnt/user-data/outputs/git-trenazher_15.html"
+def fresh(br, url, **kw):
+    ctx = br.new_context(viewport=kw.pop("viewport", {"width": 1280, "height": 900}), **kw)
+    pg = ctx.new_page(); pg.route("**/fonts.g*/**", lambda r: r.abort())
+    pg.errs = []; pg.on("pageerror", lambda e: pg.errs.append(str(e)))
+    pg.goto(url, wait_until="domcontentloaded"); pg.wait_for_selector(".nav-item"); pg.locator(".nav-item").nth(5).click(); pg.wait_for_timeout(100); return pg
+def grep(pg, q): pg.fill("#grep-input-ch6", q); pg.wait_for_timeout(40)
+def marks(pg): return pg.eval_on_selector_all("#grep-results-ch6 mark", "e=>e.map(x=>x.textContent)")
+def res_txt(pg): return pg.inner_text("#grep-results-ch6")
+def flags(pg): return pg.eval_on_selector_all(".mission", "els => els.map(e => e.classList.contains('done'))")
+def bis(pg): return pg.evaluate("(()=>{const b=STATE.chapters.ch6.bisect; return [b.lo,b.hi,b.steps]})()")
+with sync_playwright() as p:
+    br = p.chromium.launch(args=["--no-sandbox"]); errs=[]
+    print("=== ДО (_11) ===")
+    pg = fresh(br, U11); grep(pg, '"ru-RU"'); print("  grep \"ru-RU\" (с кавычками): найдено строк =", pg.locator("#grep-results-ch6 .grep-file-line").count(), "| подсвечено:", marks(pg))
+    grep(pg, 'Debounce'); print("  grep Debounce (регистр другой): строк =", pg.locator("#grep-results-ch6 .grep-file-line").count())
+    pg.click("#bisect-bad-ch6"); pg.click("#bisect-bad-ch6"); pg.click("#bisect-bad-ch6")
+    print("  bisect: три раза «плохой» подряд — итог:", pg.inner_text("#bisect-msg-ch6")[:70])
+    print("\n=== ПОСЛЕ (_12) ===")
+    pg = fresh(br, U12); errs.append(pg.errs)
+    check("0 миссии: три штуки, ни одна не выполнена", flags(pg)==[False]*3, str(flags(pg)))
+    # grep
+    grep(pg, '"ru-RU"'); check('1 grep "ru-RU" (с кавычками) находит строку и подсвечивает кавычки тоже', marks(pg)==['"ru-RU"'] and "utils.js:2:" in res_txt(pg), str(marks(pg)))
+    grep(pg, '"card"'); check('1 grep "card" → app.js:3', marks(pg)==['"card"'] and "app.js:3:" in res_txt(pg))
+    grep(pg, '=> fn'); check("1 grep со знаком > → подсветка и нет ломающейся разметки", marks(pg)==['=> fn'] and pg.locator("#grep-results-ch6 .grep-file-line").count()==1, str(marks(pg)))
+    grep(pg, 'debounce'); t=res_txt(pg)
+    check("2 debounce: формат файл:строка:текст, 2 строки в 2 файлах", "utils.js:5:export function debounce" in t and "README.md:4:" in t and "Найдено: 2 строки в 2 файлах." in t, t.splitlines()[-1])
+    check("2 показана команда git grep -n", t.startswith('$ git grep -n "debounce"'), t.splitlines()[0])
+    grep(pg, 'Debounce'); t=res_txt(pg)
+    check("3 «Debounce» с большой буквы без -i: совпадений нет, подсказка про -i", "Совпадений нет" in t and "-i" in t and marks(pg)==[], t[-70:])
+    pg.check("#grep-ci-ch6"); pg.wait_for_timeout(40); t=res_txt(pg)
+    check("3 с флажком -i находит, в команде появился -i", len(marks(pg))==2 and 'git grep -n -i "Debounce"' in t, str(marks(pg)))
+    check("3 совпадения сохраняют оригинальный регистр в тексте (debounce, а не Debounce)", "utils.js:5:export function debounce" in t)
+    grep(pg, 'a'); check("3 один символ: просьба ввести 2+", "минимум 2" in res_txt(pg))
+    grep(pg, 'x  y'); check("3 нет совпадений и не падает", "Совпадений нет" in res_txt(pg))
+    grep(pg, '(fn'); check("3 спецсимвол регулярки '(' не роняет поиск (ищет как текст)", "app.js" not in res_txt(pg) and pg.errs==[] , str(pg.errs))
+    check("4 миссия 1 засчитана после debounce", flags(pg)[0] is True, str(flags(pg)))
+    grep(pg, ""); check("4 …и остаётся засчитанной после очистки поля", flags(pg)[0] is True)
+    # blame
+    check("5 blame: у строк есть номера", pg.eval_on_selector_all(".blame-num","e=>e.map(x=>x.textContent).join()")=="1,2,3,4,5,6,7")
+    pg.locator("[data-blame='4']").click(); info=pg.inner_text("#blame-info-ch6")
+    check("5 клик по строке 5 (el.dataset.id) → commit 9c8b7a6, Марина, описание", "commit 9c8b7a6" in info and "Марина" in info and "Сохранять id товара" in info, info.replace("\n"," | ")[:80])
+    check("5 строка подсвечена, миссия 2 засчитана", pg.locator("[data-blame='4'].selected").count()==1 and flags(pg)[1] is True)
+    pg.locator("[data-blame='0']").focus(); pg.keyboard.press("Enter"); check("5 клавиатура: Enter на строке 1 → a1b2c3d", "commit a1b2c3d" in pg.inner_text("#blame-info-ch6"))
+    check("5 …фокус остался на выбранной строке", pg.evaluate("document.activeElement.dataset.blame")=="0")
+    # bisect
+    check("6 начальное состояние: c5 предложен, тест прошёл, лог с Bisecting: 3 revisions … roughly 2 steps", "c5" in pg.inner_text("#bisect-msg-ch6") and "прошёл" in pg.inner_text("#bisect-msg-ch6") and "Bisecting: 3 revisions left to test after this (roughly 2 steps)" in pg.inner_text("#bisect-log-ch6"))
+    pg.click("#bisect-bad-ch6"); check("6 отметка «плохой» при пройденном тесте — отклонена, диапазон и счётчик те же, есть пояснение", bis(pg)==[0,8,0] and "хороший" in pg.inner_text(".bisect-flash"), str(bis(pg)))
+    pg.click("#bisect-good-ch6"); check("6 верная отметка принимается: lo=4, шагов 1, предупреждение исчезло", bis(pg)==[4,8,1] and pg.locator(".bisect-flash").count()==0, str(bis(pg)))
+    check("6 лог: $ git bisect good и 1 revision … roughly 1 step", "$ git bisect good\nBisecting: 1 revision left to test after this (roughly 1 step)" in pg.inner_text("#bisect-log-ch6"))
+    check("6 следующий — c7, тест упал", "c7" in pg.inner_text("#bisect-msg-ch6") and "упал" in pg.inner_text("#bisect-msg-ch6"))
+    pg.click("#bisect-good-ch6"); check("6 «хороший» на упавшем c7 отклонён", bis(pg)==[4,8,1] and "плохой" in pg.inner_text(".bisect-flash"))
+    pg.click("#bisect-bad-ch6"); check("6 c7 плохой: hi=6, шагов 2", bis(pg)==[4,6,2], str(bis(pg)))
+    check("6 миссия 3 ещё не выполнена (нужно c6)", flags(pg)[2] is False)
+    pg.click("#bisect-good-ch6"); m=pg.inner_text("#bisect-msg-ch6")
+    check("6 итог: первый плохой c7, «Рефакторинг», шагов 3 из 9, git show, git bisect reset", "c7" in m and "Рефакторинг" in m and "3 из 9" in m and "git show e03f7a5" in m and "git bisect reset" in m, m[:70])
+    check("6 лог заканчивается «e03f7a5 is the first bad commit»", "e03f7a5 is the first bad commit" in pg.inner_text("#bisect-log-ch6"))
+    check("6 кнопки отметок заблокированы, миссия 3 засчитана", pg.is_disabled("#bisect-good-ch6") and pg.is_disabled("#bisect-bad-ch6") and flags(pg)[2] is True)
+    check("6 все 3 миссии выполнены", all(flags(pg)), str(flags(pg)))
+    pg.click("#bisect-reset-ch6"); check("6 «Начать заново» сбрасывает шаги и лог, кнопки снова активны; миссия остаётся выполненной", bis(pg)==[0,8,0] and not pg.is_disabled("#bisect-good-ch6") and "first bad commit" not in pg.inner_text("#bisect-log-ch6") and flags(pg)[2] is True)
+    check("6 список коммитов: 9 строк, c7 с «Рефакторинг…»", pg.locator(".bisect-item").count()==9 and "Рефакторинг" in pg.locator(".bisect-item").nth(6).inner_text())
+    # квиз
+    pos = pg.evaluate("STATE_DEFS.ch6.quiz.map(q=>q.options.findIndex(o=>o.correct))"); print("  позиции верных ответов:", pos)
+    check("7 квиз: 3 вопроса, верные ответы на разных местах, не B/B/B", len(pos)==3 and len(set(pos))>1 and pos.count(1)<2)
+    check("7 верный ответ нигде не самый длинный", all(max(range(4), key=lambda i: len(q["options"][i]["text"]))!=next(i for i,o in enumerate(q["options"]) if o.get("correct")) for q in pg.evaluate("STATE_DEFS.ch6.quiz")))
+    pg.locator("[data-qi='0'][data-oi='2']").click(); check("7 квиз работает: ответ засчитан после клика", "Верно" in pg.inner_text(".quiz-feedback"))
+    check("7 блок «Чем тренажёр отличается» на месте", "Чем тренажёр отличается" in pg.inner_text("body"))
+    # мобильный
+    pg = fresh(br, U12, viewport={"width":375,"height":800}); errs.append(pg.errs)
+    check("8 телефон 375px: нет горизонтальной прокрутки", pg.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1"), str(pg.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")))
+    pg.locator("[data-blame='2']").click(); pg.click("#bisect-good-ch6"); pg.wait_for_timeout(50)
+    check("8 …и после действий", pg.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1"))
+    pg.locator(".widget-grid").screenshot(path="ch6_mobile.png")
+    pg = fresh(br, U12); pg.locator("body").screenshot(path="ch6_desktop.png", )
+    # тема dark
+    ctx = br.new_context(viewport={"width":1280,"height":900}, color_scheme="dark"); pg = ctx.new_page(); pg.route("**/fonts.g*/**", lambda r: r.abort()); pg.goto(U12); pg.wait_for_selector(".nav-item"); pg.locator(".nav-item").nth(5).click(); pg.wait_for_timeout(80); pg.click("#bisect-bad-ch6"); pg.screenshot(path="ch6_dark.png", full_page=False)
+    print("  ошибки страницы:", [e for e in sum(errs,[]) if e] or "нет")
+print(f"\nИТОГ: {sum(res)}/{len(res)}")

@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #111111;
+  --text: #cccccc;
+  --muted: #666666;
+  --border: #222222;
+  --accent: #7fffd4;
+  --white: #ffffff;
+}
+
+@layer base {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 20px;
+    font-weight: 450;
+    font-feature-settings: 'onum' 1, 'liga' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  a {
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-underline-offset: 4px;
+    transition:
+      color 150ms ease,
+      text-decoration-color 150ms ease;
+  }
+
+  a:hover {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--white);
+    font-weight: 650;
+  }
+}
+
+@layer components {
+  .label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .accent {
+    color: var(--accent);
+  }
+
+  .b {
+    border-color: var(--border);
+  }
+
+  /* underline-expand nav links */
+  .nav-link {
+    position: relative;
+    text-decoration: none;
+    color: var(--text);
+    transition: color 300ms ease;
+  }
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    height: 1px;
+    width: 0%;
+    background: var(--accent);
+    transition: width 300ms ease;
+  }
+  .nav-link:hover {
+    color: var(--accent);
+  }
+  .nav-link:hover::after {
+    width: 100%;
+  }
+
+  .skill-row {
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .skill-row:hover {
+    background-color: rgba(127, 255, 212, 0.04);
+  }
+  .skill-row:hover .skill-name {
+    color: var(--accent);
+  }
+}

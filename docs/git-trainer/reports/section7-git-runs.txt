@@ -1,0 +1,2566 @@
+# Прогоны git 2.53.0, 26.09.2026, LC_ALL=C, GIT_CONFIG_NOSYSTEM=1, GIT_PAGER=cat.
+# Глобальный конфиг — пустой файл в mktemp -d (GIT_CONFIG_GLOBAL, HOME указывают туда); git config --global пишет в ~/.gitconfig.
+# Каталог прогона в выводе заменён на /work. Автор/даты: Валера <valera@example.com>, даты заданы через GIT_*_DATE.
+# Формат: "$ команда", вывод (stdout+stderr), [exit код].
+
+$ git init -q -b master && echo ok
+ok
+[exit 0]
+
+===== GITIGNORE: 14 файлов виджета лежат в рабочем каталоге, ничего не закоммичено
+===== П7.1. GITIGNORE: по умолчанию в source
+--- .gitignore:
+*.log$
+node_modules/$
+.env*$
+build/$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+.gitignore:1:*.log	debug.log
+.gitignore:1:*.log	important.log
+.gitignore:1:*.log	logs/error.log
+.gitignore:2:node_modules/	node_modules/react/index.js
+.gitignore:2:node_modules/	packages/ui/node_modules/x.js
+.gitignore:3:.env*	.env
+.gitignore:3:.env*	.env.example
+.gitignore:4:build/	build/bundle.js
+.gitignore:4:build/	build/output.map
+::	src/build.js
+.gitignore:4:build/	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .gitignore
+?? README.md
+?? app.js
+?? src/build.js
+?? style.css
+!! .env
+!! .env.example
+!! build/bundle.js
+!! build/output.map
+!! debug.log
+!! docs/build/index.html
+!! important.log
+!! logs/error.log
+!! node_modules/react/index.js
+!! packages/ui/node_modules/x.js
+[exit 0]
+
+===== П7.2. GITIGNORE: node_modules без слэша
+--- .gitignore:
+node_modules$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+.gitignore:1:node_modules	node_modules/react/index.js
+.gitignore:1:node_modules	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? src/build.js
+?? style.css
+!! node_modules/react/index.js
+!! packages/ui/node_modules/x.js
+[exit 0]
+
+===== П7.3. GITIGNORE: build без слэша
+--- .gitignore:
+build$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+.gitignore:1:build	build/bundle.js
+.gitignore:1:build	build/output.map
+::	src/build.js
+.gitignore:1:build	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! build/bundle.js
+!! build/output.map
+!! docs/build/index.html
+[exit 0]
+
+===== П7.4. GITIGNORE: build/
+--- .gitignore:
+build/$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+.gitignore:1:build/	build/bundle.js
+.gitignore:1:build/	build/output.map
+::	src/build.js
+.gitignore:1:build/	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! build/bundle.js
+!! build/output.map
+!! docs/build/index.html
+[exit 0]
+
+===== П7.5. GITIGNORE: /build/
+--- .gitignore:
+/build/$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+.gitignore:1:/build/	build/bundle.js
+.gitignore:1:/build/	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! build/bundle.js
+!! build/output.map
+[exit 0]
+
+===== П7.6. GITIGNORE: *.log + !important.log
+--- .gitignore:
+*.log$
+!important.log$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+.gitignore:1:*.log	debug.log
+.gitignore:2:!important.log	important.log
+.gitignore:1:*.log	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? docs/build/index.html
+?? important.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! debug.log
+!! logs/error.log
+[exit 0]
+
+===== П7.7. GITIGNORE: !important.log затем *.log
+--- .gitignore:
+!important.log$
+*.log$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+.gitignore:2:*.log	debug.log
+.gitignore:2:*.log	important.log
+.gitignore:2:*.log	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? docs/build/index.html
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! debug.log
+!! important.log
+!! logs/error.log
+[exit 0]
+
+===== П7.8. GITIGNORE: build/ + !build/output.map
+--- .gitignore:
+build/$
+!build/output.map$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+.gitignore:1:build/	build/bundle.js
+.gitignore:1:build/	build/output.map
+::	src/build.js
+.gitignore:1:build/	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! build/bundle.js
+!! build/output.map
+!! docs/build/index.html
+[exit 0]
+
+===== П7.9. GITIGNORE: build/* + !build/output.map
+--- .gitignore:
+build/*$
+!build/output.map$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+.gitignore:1:build/*	build/bundle.js
+.gitignore:2:!build/output.map	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! build/bundle.js
+[exit 0]
+
+===== П7.10. GITIGNORE: src/*.js
+--- .gitignore:
+src/*.js$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+.gitignore:1:src/*.js	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? style.css
+!! src/build.js
+[exit 0]
+
+===== П7.11. GITIGNORE: **/node_modules и logs/**
+--- .gitignore:
+**/node_modules$
+logs/**$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+.gitignore:2:logs/**	logs/error.log
+.gitignore:1:**/node_modules	node_modules/react/index.js
+.gitignore:1:**/node_modules	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? src/build.js
+?? style.css
+!! logs/error.log
+!! node_modules/react/index.js
+!! packages/ui/node_modules/x.js
+[exit 0]
+
+===== П7.12. GITIGNORE: docs/**/index.html
+--- .gitignore:
+docs/**/index.html$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+.gitignore:1:docs/**/index.html	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! docs/build/index.html
+[exit 0]
+
+===== П7.13. GITIGNORE: *.[jc]s?
+--- .gitignore:
+*.[jc]s?$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+.gitignore:1:*.[jc]s?	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+!! style.css
+[exit 0]
+
+===== П7.14. GITIGNORE: ?pp.js и *.c[s]s
+--- .gitignore:
+?pp.js$
+*.c[s]s$
+---
+$ git check-ignore -v --non-matching $FILES
+.gitignore:1:?pp.js	app.js
+.gitignore:2:*.c[s]s	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+!! app.js
+!! style.css
+[exit 0]
+
+===== П7.15. GITIGNORE: комментарий, пустые строки, README.md с хвостовыми пробелами
+--- .gitignore:
+# *.log$
+$
+   $
+README.md   $
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+.gitignore:4:README.md	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! README.md
+[exit 0]
+
+===== П7.16. GITIGNORE: \\#x и \\!y
+--- .gitignore:
+\#x$
+\!y$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 1]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+[exit 0]
+
+===== П7.17. GITIGNORE: [unclosed затем *.log
+--- .gitignore:
+[unclosed$
+*.log$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+.gitignore:2:*.log	debug.log
+.gitignore:2:*.log	important.log
+.gitignore:2:*.log	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? docs/build/index.html
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+!! debug.log
+!! important.log
+!! logs/error.log
+[exit 0]
+
+===== П7.18. GITIGNORE: пустой файл
+--- .gitignore:
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 1]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+[exit 0]
+
+===== П7.19. GITIGNORE: миссии: полный набор
+--- .gitignore:
+*.log$
+node_modules/$
+.env*$
+!.env.example$
+!important.log$
+build/*$
+!build/output.map$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+.gitignore:1:*.log	debug.log
+.gitignore:5:!important.log	important.log
+.gitignore:1:*.log	logs/error.log
+.gitignore:2:node_modules/	node_modules/react/index.js
+.gitignore:2:node_modules/	packages/ui/node_modules/x.js
+.gitignore:3:.env*	.env
+.gitignore:4:!.env.example	.env.example
+.gitignore:6:build/*	build/bundle.js
+.gitignore:7:!build/output.map	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 0]
+
+$ git status --short --ignored -uall
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/output.map
+?? docs/build/index.html
+?? important.log
+?? src/build.js
+?? style.css
+!! .env
+!! build/bundle.js
+!! debug.log
+!! logs/error.log
+!! node_modules/react/index.js
+!! packages/ui/node_modules/x.js
+[exit 0]
+
+===== П7.20. GITIGNORE: /todo.txt (из теории)
+--- .gitignore:
+/todo.txt$
+---
+$ git check-ignore -v --non-matching $FILES
+::	app.js
+::	style.css
+::	README.md
+::	debug.log
+::	important.log
+::	logs/error.log
+::	node_modules/react/index.js
+::	packages/ui/node_modules/x.js
+::	.env
+::	.env.example
+::	build/bundle.js
+::	build/output.map
+::	src/build.js
+::	docs/build/index.html
+[exit 1]
+
+$ git status --short --ignored -uall
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/bundle.js
+?? build/output.map
+?? debug.log
+?? docs/build/index.html
+?? important.log
+?? logs/error.log
+?? node_modules/react/index.js
+?? packages/ui/node_modules/x.js
+?? src/build.js
+?? style.css
+[exit 0]
+
+===== П7.21. GITIGNORE: status без -uall (правила по умолчанию из source)
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.gitignore
+	README.md
+	app.js
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status --short --ignored
+?? .gitignore
+?? README.md
+?? app.js
+?? src/
+?? style.css
+!! .env
+!! .env.example
+!! build/
+!! debug.log
+!! docs/
+!! important.log
+!! logs/
+!! node_modules/
+!! packages/
+[exit 0]
+
+===== П7.22. GITIGNORE: git add игнорируемого файла
+$ git add debug.log
+The following paths are ignored by one of your .gitignore files:
+debug.log
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+[exit 1]
+
+$ git add build/bundle.js
+The following paths are ignored by one of your .gitignore files:
+build
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+[exit 1]
+
+$ git add -f debug.log && git status --short debug.log
+A  debug.log
+[exit 0]
+
+===== П7.23. GITIGNORE: уже отслеживаемый файл
+$ git add app.js .gitignore && git commit -q -m "Первый коммит" && echo ok
+ok
+[exit 0]
+
+$ echo "*.js" >> .gitignore && echo "// правка" >> app.js && git status --short
+ M .gitignore
+ M app.js
+?? .env
+?? .env.example
+?? README.md
+?? style.css
+[exit 0]
+
+$ git check-ignore -v app.js
+[exit 1]
+
+$ git check-ignore -v --no-index app.js
+.gitignore:3:*.js	app.js
+[exit 0]
+
+$ git rm --cached app.js
+rm 'app.js'
+[exit 0]
+
+$ git status --short
+ M .gitignore
+D  app.js
+?? .env
+?? .env.example
+?? README.md
+?? style.css
+[exit 0]
+
+$ git check-ignore -v app.js
+.gitignore:3:*.js	app.js
+[exit 0]
+
+$ git check-ignore nosuch.txt
+[exit 1]
+
+$ git check-ignore
+fatal: no path specified
+[exit 128]
+
+===== П7.24. СООБЩЕНИЕ КОММИТА: как git хранит и показывает
+$ c; git commit -q -m "Заголовок
+вторая строка без пустой" && git log -1 --format="subject=[%s]%nbody=[%b]" && git log -1 --oneline
+subject=[Заголовок вторая строка без пустой]
+body=[]
+5fb0de7 Заголовок вторая строка без пустой
+[exit 0]
+
+$ c; git commit -q -m "Заголовок" -m "Тело после пустой строки" && git log -1 --format="subject=[%s]%nbody=[%b]" && git log -1 --oneline
+subject=[Заголовок]
+body=[Тело после пустой строки
+]
+ec1fb61 Заголовок
+[exit 0]
+
+$ c; git commit -q -m "
+
+Исправить расчёт скидки" && git log -1 --format="subject=[%s]" && git cat-file commit HEAD | tail -n +5
+subject=[Исправить расчёт скидки]
+
+Исправить расчёт скидки
+[exit 0]
+
+$ c; git commit -q -m "Заголовок с хвостовыми пробелами   " && git cat-file commit HEAD | tail -n +5 | sed "s/.*/[&]/"
+[]
+[Заголовок с хвостовыми пробелами]
+[exit 0]
+
+$ c; git commit -m ""
+Aborting commit due to empty commit message.
+[exit 1]
+
+$ c; git commit -m "   "
+Aborting commit due to empty commit message.
+[exit 1]
+
+$ c; git commit -q -m "# не комментарий при -m" && git log -1 --format=%s
+# не комментарий при -m
+[exit 0]
+
+$ c; git commit -q --cleanup=strip -m "# строка-комментарий
+Настоящий заголовок" && git log -1 --format=%s
+Настоящий заголовок
+[exit 0]
+
+$ c; git commit -q -m "$(printf "%0.sА" $(seq 1 80))" && git log -1 --oneline
+79ff615 АААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА
+[exit 0]
+
+$ git log --oneline
+79ff615 АААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА
+0a297d7 Настоящий заголовок
+a74ecf4 # не комментарий при -m
+a805617 Заголовок с хвостовыми пробелами
+945f393 Исправить расчёт скидки
+ec1fb61 Заголовок
+5fb0de7 Заголовок вторая строка без пустой
+[exit 0]
+
+===== П7.25. АЛИАСЫ
+$ git st
+git: 'st' is not a git command. See 'git --help'.
+
+The most similar commands are
+	status
+	reset
+	stage
+	stash
+[exit 1]
+
+$ git config --global alias.st status
+[exit 0]
+
+$ cat ~/.gitconfig
+[alias]
+	st = status
+[exit 0]
+
+$ git st
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	deleted:    app.js
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .gitignore
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	README.md
+	style.css
+
+[exit 0]
+
+$ git st -s
+ M .gitignore
+D  app.js
+?? .env
+?? .env.example
+?? README.md
+?? style.css
+[exit 0]
+
+$ git config --global alias.lg "log --oneline --graph"
+[exit 0]
+
+$ git lg
+* 135f928 Первый коммит
+[exit 0]
+
+$ git config --global alias.hi "!echo"
+[exit 0]
+
+$ git hi привет
+привет
+[exit 0]
+
+$ git config --global alias.here "!pwd"
+[exit 0]
+
+$ mkdir -p sub && cd sub && git here
+/work/proj
+[exit 0]
+
+$ git config --global alias.status log
+[exit 0]
+
+$ git status --short
+ M .gitignore
+D  app.js
+?? .env
+?? .env.example
+?? README.md
+?? style.css
+[exit 0]
+
+$ git config --global --get-regexp alias
+alias.st status
+alias.lg log --oneline --graph
+alias.hi !echo
+alias.here !pwd
+alias.status log
+[exit 0]
+
+$ git config --global --list
+alias.st=status
+alias.lg=log --oneline --graph
+alias.hi=!echo
+alias.here=!pwd
+alias.status=log
+[exit 0]
+
+$ git config --global -l
+alias.st=status
+alias.lg=log --oneline --graph
+alias.hi=!echo
+alias.here=!pwd
+alias.status=log
+[exit 0]
+
+$ git config --global alias.st
+status
+[exit 0]
+
+$ git config --global --get alias.st
+status
+[exit 0]
+
+$ git config --global --get alias.zz
+[exit 1]
+
+$ git config --global alias.zz
+[exit 1]
+
+$ git config --global --unset alias.zz
+[exit 5]
+
+$ git config --global --unset alias.st
+[exit 0]
+
+$ git st
+git: 'st' is not a git command. See 'git --help'.
+
+The most similar commands are
+	status
+	reset
+	stage
+	stash
+[exit 1]
+
+$ git config alias.zz "log -1"
+[exit 0]
+
+$ cat .git/config
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[alias]
+	zz = log -1
+[exit 0]
+
+$ git zz --oneline
+135f928 Первый коммит
+[exit 0]
+
+$ cd /tmp && git zz
+git: 'zz' is not a git command. See 'git --help'.
+
+The most similar commands are
+	am
+	gc
+	hi
+	lg
+	mv
+	rm
+[exit 1]
+
+$ cd $ROOT && git config alias.yy x
+fatal: not in a git directory
+[exit 128]
+
+$ git config --global alias.q ""
+[exit 0]
+
+$ git q
+expansion of alias 'q' failed; '' is not a git command
+[exit 1]
+
+$ git config --global alias.q2 "  "
+[exit 0]
+
+$ git q2
+expansion of alias 'q2' failed; '' is not a git command
+[exit 1]
+
+$ git config --global alias.q3
+[exit 1]
+
+$ git config --global user.name X && git config --global user.name
+X
+[exit 0]
+
+$ git config --global alias.co checkout
+[exit 0]
+
+$ git help co
+'co' is aliased to 'checkout'
+[exit 0]
+
+$ git co -h 2>&1 | head -3
+'co' is aliased to 'checkout'
+usage: git checkout [<options>] <branch>
+   or: git checkout [<options>] [<branch>] -- <file>...
+[exit 0]
+
+$ git config --global alias.st-short "status -s"
+[exit 0]
+
+$ git st-short
+ M .gitignore
+D  app.js
+?? .env
+?? .env.example
+?? README.md
+?? style.css
+[exit 0]
+
+$ git config --global alias.1x status
+error: invalid key: alias.1x
+[exit 1]
+
+$ git config --global alias._x status
+error: invalid key: alias._x
+[exit 1]
+
+$ git config --global "alias.a b" status
+error: invalid key: alias.a b
+[exit 1]
+
+$ git config --global alias.bad!name status
+error: invalid key: alias.bad!name
+[exit 1]
+
+$ git config --global alias.loop loop
+[exit 0]
+
+$ git loop
+fatal: recursive alias: loop
+[exit 128]
+
+$ git config --global alias.lg "log --oneline --graph --all"
+[exit 0]
+
+$ git config --global --get-regexp alias
+alias.lg log --oneline --graph --all
+alias.hi !echo
+alias.here !pwd
+alias.status log
+alias.q 
+alias.q2   
+alias.co checkout
+alias.st-short status -s
+alias.loop loop
+[exit 0]
+
+$ git config --global --get-regexp "^alias\.l"
+alias.lg log --oneline --graph --all
+alias.loop loop
+[exit 0]
+
+$ git config --global --get-regexp "["
+error: invalid key pattern: [
+[exit 6]
+
+$ git config --global --get-regexp nosuch
+[exit 1]
+
+$ git config --global --foo
+error: unknown option `foo'
+usage: git config list [<file-option>] [<display-option>] [--includes]
+   or: git config get [<file-option>] [<display-option>] [--includes] [--all] [--regexp] [--value=<pattern>] [--fixed-value] [--default=<default>] [--url=<url>] <name>
+   or: git config set [<file-option>] [--type=<type>] [--all] [--value=<pattern>] [--fixed-value] <name> <value>
+   or: git config unset [<file-option>] [--all] [--value=<pattern>] [--fixed-value] <name>
+   or: git config rename-section [<file-option>] <old-name> <new-name>
+   or: git config remove-section [<file-option>] <name>
+   or: git config edit [<file-option>]
+   or: git config [<file-option>] --get-colorbool <name> [<stdout-is-tty>]
+
+Config file location
+    --[no-]global         use global config file
+    --[no-]system         use system config file
+    --[no-]local          use repository config file
+    --[no-]worktree       use per-worktree config file
+    -f, --[no-]file <file>
+                          use given config file
+    --[no-]blob <blob-id> read config from given blob object
+
+Action
+    --get                 get value: name [<value-pattern>]
+    --get-all             get all values: key [<value-pattern>]
+    --get-regexp          get values for regexp: name-regex [<value-pattern>]
+    --get-urlmatch        get value specific for the URL: section[.var] URL
+    --replace-all         replace all matching variables: name value [<value-pattern>]
+    --add                 add a new variable: name value
+    --unset               remove a variable: name [<value-pattern>]
+    --unset-all           remove all matches: name [<value-pattern>]
+    --rename-section      rename section: old-name new-name
+    --remove-section      remove a section: name
+    -l, --list            list all
+    -e, --edit            open an editor
+    --get-color           find the color configured: slot [<default>]
+    --get-colorbool       find the color setting: slot [<stdout-is-tty>]
+
+Display options
+    -z, --[no-]null       terminate values with NUL byte
+    --[no-]name-only      show variable names only
+    --[no-]show-origin    show origin of config (file, standard input, blob, command line)
+    --[no-]show-scope     show scope of config (worktree, local, global, system, command)
+    --[no-]show-names     show config keys in addition to their values
+
+Type
+    -t, --[no-]type <type>
+                          value is given this type
+    --bool                value is "true" or "false"
+    --int                 value is decimal number
+    --bool-or-int         value is --bool or --int
+    --bool-or-str         value is --bool or string
+    --path                value is a path (file or directory name)
+    --expiry-date         value is an expiry date
+
+Other
+    --[no-]default <value>
+                          with --get, use default value when missing entry
+    --[no-]comment <value>
+                          human-readable comment string (# will be prepended as needed)
+    --[no-]fixed-value    use string equality when comparing values to value pattern
+    --[no-]includes       respect include directives on lookup
+
+[exit 129]
+
+$ git config --global
+error: no action specified
+[exit 129]
+
+$ git config get --global alias.lg
+log --oneline --graph --all
+[exit 0]
+
+$ git config list --global
+alias.lg=log --oneline --graph --all
+alias.hi=!echo
+alias.here=!pwd
+alias.status=log
+alias.q=
+alias.q2=  
+alias.co=checkout
+alias.st-short=status -s
+alias.loop=loop
+user.name=X
+[exit 0]
+
+$ git config set --global alias.br branch
+[exit 0]
+
+$ git config unset --global alias.br
+[exit 0]
+
+$ cat ~/.gitconfig
+[alias]
+	lg = log --oneline --graph --all
+	hi = !echo
+	here = !pwd
+	status = log
+	q = 
+	q2 = "  "
+	co = checkout
+	st-short = status -s
+	loop = loop
+[user]
+	name = X
+[exit 0]
+
+$ ls
+README.md
+app.js
+build
+debug.log
+docs
+important.log
+logs
+node_modules
+packages
+src
+style.css
+sub
+[exit 0]
+
+$ git stt
+git: 'stt' is not a git command. See 'git --help'.
+
+The most similar command is
+	status
+[exit 1]
+
+$ git sttus
+git: 'sttus' is not a git command. See 'git --help'.
+
+The most similar command is
+	status
+[exit 1]
+
+# ---- Дополнительные прогоны, 27.09.2026, git 2.53.0. Условия те же, что в шапке файла; новый временной каталог.
+
+===== П7.26. LOG В РЕПОЗИТОРИИ БЕЗ КОММИТОВ (14 файлов, ничего не закоммичено)
+$ git log --oneline
+fatal: your current branch 'master' does not have any commits yet
+[exit 128]
+
+$ git log --oneline --graph
+fatal: your current branch 'master' does not have any commits yet
+[exit 128]
+
+$ git log
+fatal: your current branch 'master' does not have any commits yet
+[exit 128]
+
+$ git config --global alias.lg "log --oneline --graph"
+[exit 0]
+
+$ git lg
+fatal: your current branch 'master' does not have any commits yet
+[exit 128]
+
+$ git config --global alias.st status
+[exit 0]
+
+$ git st
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.gitignore
+	README.md
+	app.js
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git st -s
+?? .gitignore
+?? README.md
+?? app.js
+?? src/
+?? style.css
+[exit 0]
+
+===== П7.27. STATUS БЕЗ -uall: node_modules без слэша (как П7.2)
+--- .gitignore:
+node_modules$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? src/
+?? style.css
+!! node_modules/
+!! packages/
+[exit 0]
+
+===== П7.28. STATUS БЕЗ -uall: build без слэша (как П7.3)
+--- .gitignore:
+build$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	debug.log
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! build/
+!! docs/
+[exit 0]
+
+===== П7.29. STATUS БЕЗ -uall: build/ (как П7.4)
+--- .gitignore:
+build/$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	debug.log
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! build/
+!! docs/
+[exit 0]
+
+===== П7.30. STATUS БЕЗ -uall: /build/ (как П7.5)
+--- .gitignore:
+/build/$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! build/
+[exit 0]
+
+===== П7.31. STATUS БЕЗ -uall: *.log + !important.log (как П7.6)
+--- .gitignore:
+*.log$
+!important.log$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	docs/
+	important.log
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? important.log
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? important.log
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! debug.log
+!! logs/
+[exit 0]
+
+===== П7.32. STATUS БЕЗ -uall: !important.log затем *.log (как П7.7)
+--- .gitignore:
+!important.log$
+*.log$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	docs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! debug.log
+!! important.log
+!! logs/
+[exit 0]
+
+===== П7.33. STATUS БЕЗ -uall: build/ + !build/output.map (как П7.8)
+--- .gitignore:
+build/$
+!build/output.map$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	debug.log
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! build/
+!! docs/
+[exit 0]
+
+===== П7.34. STATUS БЕЗ -uall: build/* + !build/output.map (как П7.9)
+--- .gitignore:
+build/*$
+!build/output.map$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! build/bundle.js
+[exit 0]
+
+===== П7.35. STATUS БЕЗ -uall: src/*.js (как П7.10)
+--- .gitignore:
+src/*.js$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? style.css
+!! src/
+[exit 0]
+
+===== П7.36. STATUS БЕЗ -uall: **/node_modules и logs/** (как П7.11)
+--- .gitignore:
+**/node_modules$
+logs/**$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? src/
+?? style.css
+!! logs/
+!! node_modules/
+!! packages/
+[exit 0]
+
+===== П7.37. STATUS БЕЗ -uall: docs/**/index.html (как П7.12)
+--- .gitignore:
+docs/**/index.html$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! docs/
+[exit 0]
+
+===== П7.38. STATUS БЕЗ -uall: *.[jc]s? (как П7.13)
+--- .gitignore:
+*.[jc]s?$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+!! style.css
+[exit 0]
+
+===== П7.39. STATUS БЕЗ -uall: ?pp.js и *.c[s]s (как П7.14)
+--- .gitignore:
+?pp.js$
+*.c[s]s$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+!! app.js
+!! style.css
+[exit 0]
+
+===== П7.40. STATUS БЕЗ -uall: комментарий, пустые строки, README.md с хвостовыми пробелами (как П7.15)
+--- .gitignore:
+# *.log$
+$
+   $
+README.md   $
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! README.md
+[exit 0]
+
+===== П7.41. STATUS БЕЗ -uall: \\#x и \\!y (как П7.16)
+--- .gitignore:
+\#x$
+\!y$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+===== П7.42. STATUS БЕЗ -uall: [unclosed затем *.log (как П7.17)
+--- .gitignore:
+[unclosed$
+*.log$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	docs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+!! debug.log
+!! important.log
+!! logs/
+[exit 0]
+
+===== П7.43. STATUS БЕЗ -uall: пустой файл (как П7.18)
+--- .gitignore:
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+===== П7.44. STATUS БЕЗ -uall: миссии: полный набор (как П7.19)
+--- .gitignore:
+*.log$
+node_modules/$
+.env*$
+!.env.example$
+!important.log$
+build/*$
+!build/output.map$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	docs/
+	important.log
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? important.log
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? docs/
+?? important.log
+?? src/
+?? style.css
+!! .env
+!! build/bundle.js
+!! debug.log
+!! logs/
+!! node_modules/
+!! packages/
+[exit 0]
+
+===== П7.45. STATUS БЕЗ -uall: /todo.txt (как П7.20)
+--- .gitignore:
+/todo.txt$
+---
+$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	.env.example
+	.gitignore
+	README.md
+	app.js
+	build/
+	debug.log
+	docs/
+	important.log
+	logs/
+	node_modules/
+	packages/
+	src/
+	style.css
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git status -s
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+
+$ git status --short --ignored
+?? .env
+?? .env.example
+?? .gitignore
+?? README.md
+?? app.js
+?? build/
+?? debug.log
+?? docs/
+?? important.log
+?? logs/
+?? node_modules/
+?? packages/
+?? src/
+?? style.css
+[exit 0]
+

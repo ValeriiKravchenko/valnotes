@@ -1,0 +1,1180 @@
+# Прогоны git 2.53.0, 26.09.2026, LC_ALL=C, GIT_CONFIG_GLOBAL=/dev/null (без pull.rebase и прочих настроек).
+# Сервер = локальный bare-репозиторий в mktemp -d; «коллега» = второй клон того же bare.
+# Формат: "$ команда", вывод (stdout+stderr), [exit код].
+
+===== ВНЕ РЕПОЗИТОРИЯ (каталог /tmp/tmp.fUD23r8Yfa, сервер = origin.git)
+$ git status
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[exit 128]
+
+===== CLONE
+$ git clone origin.git local
+Cloning into 'local'...
+done.
+[exit 0]
+
+$ git clone origin.git local
+fatal: destination path 'local' already exists and is not an empty directory.
+[exit 128]
+
+$ git clone /nonexistent/y.git z
+fatal: repository '/nonexistent/y.git' does not exist
+[exit 128]
+
+$ git remote
+origin
+[exit 0]
+
+$ git remote -v
+origin	/tmp/tmp.fUD23r8Yfa/origin.git (fetch)
+origin	/tmp/tmp.fUD23r8Yfa/origin.git (push)
+[exit 0]
+
+$ git branch -r
+  origin/HEAD -> origin/master
+  origin/master
+[exit 0]
+
+$ git branch -a
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/master
+[exit 0]
+
+$ git status
+On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch -d master
+error: cannot delete branch 'master' used by worktree at '/tmp/tmp.fUD23r8Yfa/local'
+[exit 1]
+
+===== СВОЙ КОММИТ, PUSH
+$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git push
+To /tmp/tmp.fUD23r8Yfa/origin.git
+   df95a30..fe1c704  master -> master
+[exit 0]
+
+$ git status
+On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git push
+Everything up-to-date
+[exit 0]
+
+$ git push -u origin master
+Everything up-to-date
+branch 'master' set up to track 'origin/master'.
+[exit 0]
+
+$ git push -u origin master
+To /tmp/tmp.fUD23r8Yfa/origin.git
+   fe1c704..c5cb87b  master -> master
+branch 'master' set up to track 'origin/master'.
+[exit 0]
+
+$ git push -x
+error: unknown switch `x'
+usage: git push [<options>] [<repository> [<refspec>...]]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]repo <repository>
+                          repository
+    --[no-]all            push all branches
+    --[no-]branches       alias of --all
+    --[no-]mirror         mirror all refs
+    -d, --[no-]delete     delete refs
+    --[no-]tags           push tags (can't be used with --all or --branches or --mirror)
+    -n, --[no-]dry-run    dry run
+    --[no-]porcelain      machine-readable output
+    -f, --[no-]force      force updates
+    --[no-]force-with-lease[=<refname>:<expect>]
+                          require old value of ref to be at this value
+    --[no-]force-if-includes
+                          require remote updates to be integrated locally
+    --[no-]recurse-submodules (check|on-demand|no)
+                          control recursive pushing of submodules
+    --[no-]thin           use thin pack
+    --[no-]receive-pack <receive-pack>
+                          receive pack program
+    --[no-]exec <receive-pack>
+                          receive pack program
+    -u, --[no-]set-upstream
+                          set upstream for git pull/status
+    --[no-]progress       force progress reporting
+    --[no-]prune          prune locally removed refs
+    --no-verify           bypass pre-push hook
+    --verify              opposite of --no-verify
+    --[no-]follow-tags    push missing but relevant tags
+    --[no-]signed[=(yes|no|if-asked)]
+                          GPG sign the push
+    --[no-]atomic         request atomic transaction on remote side
+    -o, --[no-]push-option <server-specific>
+                          option to transmit
+    -4, --ipv4            use IPv4 addresses only
+    -6, --ipv6            use IPv6 addresses only
+
+[exit 129]
+
+$ git push master
+fatal: 'master' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+[exit 128]
+
+$ git push origin nosuch
+error: src refspec nosuch does not match any
+error: failed to push some refs to '/tmp/tmp.fUD23r8Yfa/origin.git'
+[exit 1]
+
+$ git push origin HEAD
+Everything up-to-date
+[exit 0]
+
+$ git push origin master extra
+error: src refspec extra does not match any
+error: failed to push some refs to '/tmp/tmp.fUD23r8Yfa/origin.git'
+[exit 1]
+
+===== КОЛЛЕГА ПУШИТ (второй клон)
+$ git status
+On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git fetch
+From /tmp/tmp.fUD23r8Yfa/origin
+   c5cb87b..c8117c5  master     -> origin/master
+[exit 0]
+
+$ git status
+On branch master
+Your branch is behind 'origin/master' by 1 commit, and can be fast-forwarded.
+  (use "git pull" to update your local branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git fetch
+[exit 0]
+
+$ git pull
+Updating c5cb87b..c8117c5
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 CHANGELOG.md
+[exit 0]
+
+$ git pull
+Already up to date.
+[exit 0]
+
+===== РАСХОЖДЕНИЕ
+$ git push
+To /tmp/tmp.fUD23r8Yfa/origin.git
+ ! [rejected]        master -> master (fetch first)
+error: failed to push some refs to '/tmp/tmp.fUD23r8Yfa/origin.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+$ git fetch
+From /tmp/tmp.fUD23r8Yfa/origin
+   c8117c5..a24fdbe  master     -> origin/master
+[exit 0]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git pull
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+[exit 128]
+
+$ git pull --no-rebase
+Merge made by the 'ort' strategy.
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 2 commits.
+  (use "git push" to publish your local commits)
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	notes.txt
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+$ git log --oneline --graph --all
+*   92b6415 Merge branch 'master' of /tmp/tmp.fUD23r8Yfa/origin
+|\  
+| * a24fdbe Обновить changelog 2
+* | d6f6d48 m2
+|/  
+* c8117c5 Обновить changelog
+* c5cb87b m1b
+* fe1c704 m1
+* df95a30 Первый коммит
+[exit 0]
+
+$ git push
+To /tmp/tmp.fUD23r8Yfa/origin.git
+   a24fdbe..92b6415  master -> master
+[exit 0]
+
+$ git status
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	notes.txt
+
+nothing added to commit but untracked files present (use "git add" to track)
+[exit 0]
+
+===== PULL БЕЗ FETCH НА РАСХОЖДЕНИИ (pull.rebase=false задан)
+$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git -c pull.rebase=false pull
+From /tmp/tmp.fUD23r8Yfa/origin
+   92b6415..7171104  master     -> origin/master
+Merge made by the 'ort' strategy.
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+===== FAST-FORWARD ONLY / pull.ff
+$ git pull --ff-only
+From /tmp/tmp.fUD23r8Yfa/origin
+   7171104..1dce8e5  master     -> origin/master
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+[exit 128]
+
+===== FORCE
+$ git push --force
+To /tmp/tmp.fUD23r8Yfa/origin.git
+ + 1dce8e5...a3ec707 master -> master (forced update)
+[exit 0]
+
+$ git log --oneline -3 origin/master
+a3ec707 m4
+47587ef Merge branch 'master' of /tmp/tmp.fUD23r8Yfa/origin
+6ca6ae5 m3
+[exit 0]
+
+===== FEATURE
+$ git switch -c feature
+Switched to a new branch 'feature'
+[exit 0]
+
+$ git status
+On branch feature
+nothing to commit, working tree clean
+[exit 0]
+
+$ git pull
+There is no tracking information for the current branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details.
+
+    git pull <remote> <branch>
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=origin/<branch> feature
+
+[exit 1]
+
+$ git push
+fatal: The current branch feature has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin feature
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+
+[exit 128]
+
+$ git push -u origin feature
+To /tmp/tmp.fUD23r8Yfa/origin.git
+ * [new branch]      feature -> feature
+branch 'feature' set up to track 'origin/feature'.
+[exit 0]
+
+$ git status
+On branch feature
+Your branch is up to date with 'origin/feature'.
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git pull origin nosuch
+fatal: couldn't find remote ref nosuch
+[exit 1]
+
+$ git branch -a
+* feature
+  master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/feature
+  remotes/origin/master
+[exit 0]
+
+$ git remote add x y
+[exit 0]
+
+$ git remote -v
+origin	/tmp/tmp.fUD23r8Yfa/origin.git (fetch)
+origin	/tmp/tmp.fUD23r8Yfa/origin.git (push)
+x	y (fetch)
+x	y (push)
+[exit 0]
+
+===== FETCH С НОВОЙ ВЕТКОЙ НА СЕРВЕРЕ
+$ git fetch
+From /tmp/tmp.fUD23r8Yfa/origin
+ * [new branch]      hotfix     -> origin/hotfix
+[exit 0]
+
+===== CLONE ПУСТОГО СЕРВЕРА
+$ git clone empty.git e
+Cloning into 'e'...
+warning: You appear to have cloned an empty repository.
+done.
+[exit 0]
+
+RUN_DIR=/tmp/tmp.fUD23r8Yfa
+===== clone по имени каталога без .git (сервер = bare 'origin')
+$ git clone origin local
+Cloning into 'local'...
+done.
+[exit 0]
+
+$ git remote -v
+origin	/tmp/tmp.1OEnBtwUMq/origin (fetch)
+origin	/tmp/tmp.1OEnBtwUMq/origin (push)
+[exit 0]
+
+===== push после fetch, ветки разошлись
+$ git fetch
+From /tmp/tmp.1OEnBtwUMq/origin
+   ca9a9c5..380a33f  master     -> origin/master
+[exit 0]
+
+$ git push
+To /tmp/tmp.1OEnBtwUMq/origin
+ ! [rejected]        master -> master (non-fast-forward)
+error: failed to push some refs to '/tmp/tmp.1OEnBtwUMq/origin'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+===== pull --rebase на расхождении
+$ git pull --rebase
+Rebasing (1/1)Successfully rebased and updated refs/heads/master.
+[exit 0]
+
+$ git log --oneline --graph --all
+* 5165627 m1
+* 380a33f c1
+* ca9a9c5 Первый
+[exit 0]
+
+===== pull без fetch: локально есть незапушенный m1 (после rebase), коллега запушил c2 — ветки разошлись; fetch не делали
+$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git pull
+From /tmp/tmp.1OEnBtwUMq/origin
+   380a33f..f2c4b02  master     -> origin/master
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+[exit 128]
+
+RUN_DIR=/tmp/tmp.1OEnBtwUMq
+
+===== [3] каталог /tmp/tmp.SA1yYdc8Oq; сервер = bare '/tmp/tmp.SA1yYdc8Oq/origin'
+$ git clone
+fatal: You must specify a repository to clone.
+
+usage: git clone [<options>] [--] <repo> [<dir>]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]progress       force progress reporting
+    --[no-]reject-shallow don't clone shallow repository
+    -n, --no-checkout     don't create a checkout
+    --checkout            opposite of --no-checkout
+    --[no-]bare           create a bare repository
+    --[no-]mirror         create a mirror repository (implies --bare)
+    -l, --[no-]local      to clone from a local repository
+    --no-hardlinks        don't use local hardlinks, always copy
+    --hardlinks           opposite of --no-hardlinks
+    -s, --[no-]shared     setup as shared repository
+    --[no-]recurse-submodules[=<pathspec>]
+                          initialize submodules in the clone
+    --[no-]recursive ...  alias of --recurse-submodules
+    -j, --[no-]jobs <n>   number of submodules cloned in parallel
+    --[no-]template <template-directory>
+                          directory from which templates will be used
+    --[no-]reference <repo>
+                          reference repository
+    --[no-]reference-if-able <repo>
+                          reference repository
+    --[no-]dissociate     use --reference only while cloning
+    -o, --[no-]origin <name>
+                          use <name> instead of 'origin' to track upstream
+    -b, --[no-]branch <branch>
+                          checkout <branch> instead of the remote's HEAD
+    --[no-]revision <rev> clone single revision <rev> and check out
+    -u, --[no-]upload-pack <path>
+                          path to git-upload-pack on the remote
+    --[no-]depth <depth>  create a shallow clone of that depth
+    --[no-]shallow-since <time>
+                          create a shallow clone since a specific time
+    --[no-]shallow-exclude <ref>
+                          deepen history of shallow clone, excluding ref
+    --[no-]single-branch  clone only one branch, HEAD or --branch
+    --[no-]tags           clone tags, and make later fetches not to follow them
+    --[no-]shallow-submodules
+                          any cloned submodules will be shallow
+    --[no-]separate-git-dir <gitdir>
+                          separate git dir from working tree
+    --[no-]ref-format <format>
+                          specify the reference format to use
+    -c, --[no-]config <key=value>
+                          set config inside the new repository
+    --[no-]server-option <server-specific>
+                          option to transmit
+    -4, --ipv4            use IPv4 addresses only
+    -6, --ipv6            use IPv6 addresses only
+    --[no-]filter <args>  object filtering
+    --[no-]also-filter-submodules
+                          apply partial clone filters to submodules
+    --[no-]remote-submodules
+                          any cloned submodules will use their remote-tracking branch
+    --[no-]sparse         initialize sparse-checkout file to include only files at root
+    --[no-]bundle-uri <uri>
+                          a URI for downloading bundles before fetching from origin remote
+
+[exit 129]
+
+$ git clone nosuch local
+fatal: repository 'nosuch' does not exist
+[exit 128]
+
+$ git clone -x origin local
+error: unknown switch `x'
+usage: git clone [<options>] [--] <repo> [<dir>]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]progress       force progress reporting
+    --[no-]reject-shallow don't clone shallow repository
+    -n, --no-checkout     don't create a checkout
+    --checkout            opposite of --no-checkout
+    --[no-]bare           create a bare repository
+    --[no-]mirror         create a mirror repository (implies --bare)
+    -l, --[no-]local      to clone from a local repository
+    --no-hardlinks        don't use local hardlinks, always copy
+    --hardlinks           opposite of --no-hardlinks
+    -s, --[no-]shared     setup as shared repository
+    --[no-]recurse-submodules[=<pathspec>]
+                          initialize submodules in the clone
+    --[no-]recursive[=<pathspec>]
+                          alias of --recurse-submodules
+    -j, --[no-]jobs <n>   number of submodules cloned in parallel
+    --[no-]template <template-directory>
+                          directory from which templates will be used
+    --[no-]reference <repo>
+                          reference repository
+    --[no-]reference-if-able <repo>
+                          reference repository
+    --[no-]dissociate     use --reference only while cloning
+    -o, --[no-]origin <name>
+                          use <name> instead of 'origin' to track upstream
+    -b, --[no-]branch <branch>
+                          checkout <branch> instead of the remote's HEAD
+    --[no-]revision <rev> clone single revision <rev> and check out
+    -u, --[no-]upload-pack <path>
+                          path to git-upload-pack on the remote
+    --[no-]depth <depth>  create a shallow clone of that depth
+    --[no-]shallow-since <time>
+                          create a shallow clone since a specific time
+    --[no-]shallow-exclude <ref>
+                          deepen history of shallow clone, excluding ref
+    --[no-]single-branch  clone only one branch, HEAD or --branch
+    --[no-]tags           clone tags, and make later fetches not to follow them
+    --[no-]shallow-submodules
+                          any cloned submodules will be shallow
+    --[no-]separate-git-dir <gitdir>
+                          separate git dir from working tree
+    --[no-]ref-format <format>
+                          specify the reference format to use
+    -c, --[no-]config <key=value>
+                          set config inside the new repository
+    --[no-]server-option <server-specific>
+                          option to transmit
+    -4, --ipv4            use IPv4 addresses only
+    -6, --ipv6            use IPv6 addresses only
+    --[no-]filter <args>  object filtering
+    --[no-]also-filter-submodules
+                          apply partial clone filters to submodules
+    --[no-]remote-submodules
+                          any cloned submodules will use their remote-tracking branch
+    --[no-]sparse         initialize sparse-checkout file to include only files at root
+    --[no-]bundle-uri <uri>
+                          a URI for downloading bundles before fetching from origin remote
+
+[exit 129]
+
+$ git clone origin local
+Cloning into 'local'...
+done.
+[exit 0]
+
+===== clone изнутри local
+$ git clone origin local
+fatal: repository 'origin' does not exist
+[exit 128]
+
+===== fetch/push/pull с именем сервера
+$ git fetch origin
+From /tmp/tmp.SA1yYdc8Oq/origin
+   7893824..86adc51  master     -> origin/master
+[exit 0]
+
+$ git fetch -x
+error: unknown switch `x'
+usage: git fetch [<options>] [<repository> [<refspec>...]]
+   or: git fetch [<options>] <group>
+   or: git fetch --multiple [<options>] [(<repository>|<group>)...]
+   or: git fetch --all [<options>]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]all            fetch from all remotes
+    --[no-]set-upstream   set upstream for git pull/fetch
+    -a, --[no-]append     append to .git/FETCH_HEAD instead of overwriting
+    --[no-]atomic         use atomic transaction to update references
+    --[no-]upload-pack <path>
+                          path to upload pack on remote end
+    -f, --[no-]force      force overwrite of local reference
+    -m, --[no-]multiple   fetch from multiple remotes
+    -t, --[no-]tags       fetch all tags and associated objects
+    -n                    do not fetch all tags (--no-tags)
+    -j, --[no-]jobs <n>   number of submodules fetched in parallel
+    --[no-]prefetch       modify the refspec to place all refs within refs/prefetch/
+    -p, --[no-]prune      prune remote-tracking branches no longer on remote
+    -P, --[no-]prune-tags prune local tags no longer on remote and clobber changed tags
+    --[no-]recurse-submodules[=<on-demand>]
+                          control recursive fetching of submodules
+    --[no-]dry-run        dry run
+    --[no-]porcelain      machine-readable output
+    --[no-]write-fetch-head
+                          write fetched references to the FETCH_HEAD file
+    -k, --[no-]keep       keep downloaded pack
+    -u, --[no-]update-head-ok
+                          allow updating of HEAD ref
+    --[no-]progress       force progress reporting
+    --[no-]depth <depth>  deepen history of shallow clone
+    --[no-]shallow-since <time>
+                          deepen history of shallow repository based on time
+    --[no-]shallow-exclude <ref>
+                          deepen history of shallow clone, excluding ref
+    --[no-]deepen <n>     deepen history of shallow clone
+    --unshallow           convert to a complete repository
+    --refetch             re-fetch without negotiating common commits
+    --[no-]update-shallow accept refs that update .git/shallow
+    --refmap <refmap>     specify fetch refmap
+    -o, --[no-]server-option <server-specific>
+                          option to transmit
+    -4, --ipv4            use IPv4 addresses only
+    -6, --ipv6            use IPv6 addresses only
+    --[no-]negotiation-tip <revision>
+                          report that we have only objects reachable from this object
+    --[no-]negotiate-only do not fetch a packfile; instead, print ancestors of negotiation tips
+    --[no-]filter <args>  object filtering
+    --[no-]auto-maintenance
+                          run 'maintenance --auto' after fetching
+    --[no-]auto-gc        run 'maintenance --auto' after fetching
+    --[no-]show-forced-updates
+                          check for forced-updates on all updated branches
+    --[no-]write-commit-graph
+                          write the commit-graph after fetching
+    --[no-]stdin          accept refspecs from stdin
+
+[exit 129]
+
+$ git pull origin master
+From /tmp/tmp.SA1yYdc8Oq/origin
+ * branch            master     -> FETCH_HEAD
+Updating 7893824..86adc51
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 CHANGELOG.md
+[exit 0]
+
+$ git pull master
+fatal: 'master' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+[exit 1]
+
+$ git pull -x
+error: unknown switch `x'
+usage: git pull [<options>] [<repository> [<refspec>...]]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]progress       force progress reporting
+    --[no-]recurse-submodules[=<on-demand>]
+                          control for recursive fetching of submodules
+
+Options related to merging
+    -r, --[no-]rebase[=(false|true|merges|interactive)]
+                          incorporate changes by rebasing rather than merging
+    -n                    do not show a diffstat at the end of the merge
+    --[no-]stat           show a diffstat at the end of the merge
+    --[no-]compact-summary
+                          show a compact-summary at the end of the merge
+    --[no-]log[=<n>]      add (at most <n>) entries from shortlog to merge commit message
+    --[no-]signoff[=...]  add a Signed-off-by trailer
+    --[no-]squash         create a single commit instead of doing a merge
+    --[no-]commit         perform a commit if the merge succeeds (default)
+    --[no-]edit           edit message before committing
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    --[no-]ff             allow fast-forward
+    --ff-only             abort if fast-forward is not possible
+    --[no-]verify         control use of pre-merge-commit and commit-msg hooks
+    --[no-]verify-signatures
+                          verify that the named commit has a valid GPG signature
+    --[no-]autostash      automatically stash/stash pop before and after
+    -s, --[no-]strategy <strategy>
+                          merge strategy to use
+    -X, --[no-]strategy-option <option=value>
+                          option for selected merge strategy
+    -S, --[no-]gpg-sign[=<key-id>]
+                          GPG sign commit
+    --[no-]allow-unrelated-histories
+                          allow merging unrelated histories
+
+Options related to fetching
+    --[no-]all            fetch from all remotes
+    -a, --[no-]append     append to .git/FETCH_HEAD instead of overwriting
+    --[no-]upload-pack <path>
+                          path to upload pack on remote end
+    -f, --[no-]force      force overwrite of local branch
+    -t, --[no-]tags       fetch all tags and associated objects
+    -p, --[no-]prune      prune remote-tracking branches no longer on remote
+    -j, --[no-]jobs[=<n>] number of submodules pulled in parallel
+    --[no-]dry-run        dry run
+    -k, --[no-]keep       keep downloaded pack
+    --[no-]depth <depth>  deepen history of shallow clone
+    --[no-]shallow-since <time>
+                          deepen history of shallow repository based on time
+    --[no-]shallow-exclude <ref>
+                          deepen history of shallow clone, excluding ref
+    --[no-]deepen <n>     deepen history of shallow clone
+    --unshallow           convert to a complete repository
+    --[no-]update-shallow accept refs that update .git/shallow
+    --refmap <refmap>     specify fetch refmap
+    -o, --[no-]server-option <server-specific>
+                          option to transmit
+    -4, --[no-]ipv4       use IPv4 addresses only
+    -6, --[no-]ipv6       use IPv6 addresses only
+    --[no-]negotiation-tip <revision>
+                          report that we have only objects reachable from this object
+    --[no-]show-forced-updates
+                          check for forced-updates on all updated branches
+    --[no-]set-upstream   set upstream for git pull/fetch
+
+[exit 129]
+
+$ git push origin
+To /tmp/tmp.SA1yYdc8Oq/origin
+   86adc51..91fb0e6  master -> master
+[exit 0]
+
+$ git remote -x
+error: unknown switch `x'
+usage: git remote [-v | --verbose]
+   or: git remote add [-t <branch>] [-m <master>] [-f] [--tags | --no-tags] [--mirror=<fetch|push>] <name> <url>
+   or: git remote rename [--[no-]progress] <old> <new>
+   or: git remote remove <name>
+   or: git remote set-head <name> (-a | --auto | -d | --delete | <branch>)
+   or: git remote [-v | --verbose] show [-n] <name>
+   or: git remote prune [-n | --dry-run] <name>
+   or: git remote [-v | --verbose] update [-p | --prune] [(<group> | <remote>)...]
+   or: git remote set-branches [--add] <name> <branch>...
+   or: git remote get-url [--push] [--all] <name>
+   or: git remote set-url [--push] <name> <newurl> [<oldurl>]
+   or: git remote set-url --add <name> <newurl>
+   or: git remote set-url --delete <name> <url>
+
+    -v, --[no-]verbose    be verbose; must be placed before a subcommand
+
+[exit 129]
+
+===== pull, когда копия только впереди
+$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git pull
+Already up to date.
+[exit 0]
+
+$ git push -q
+[exit 0]
+
+===== pull с перемоткой без fetch
+$ git pull
+From /tmp/tmp.SA1yYdc8Oq/origin
+   84dcad5..7a4fba0  master     -> origin/master
+Updating 84dcad5..7a4fba0
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+===== push, когда копия только отстаёт
+$ git push
+To /tmp/tmp.SA1yYdc8Oq/origin
+ ! [rejected]        master -> master (fetch first)
+error: failed to push some refs to '/tmp/tmp.SA1yYdc8Oq/origin'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+$ git fetch
+From /tmp/tmp.SA1yYdc8Oq/origin
+   7a4fba0..12bd869  master     -> origin/master
+[exit 0]
+
+$ git push
+To /tmp/tmp.SA1yYdc8Oq/origin
+ ! [rejected]        master -> master (non-fast-forward)
+error: failed to push some refs to '/tmp/tmp.SA1yYdc8Oq/origin'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+$ git pull -q
+[exit 0]
+
+===== критерий fetch first / non-fast-forward: fetch, затем удалить origin/master
+$ git fetch -q
+[exit 0]
+
+$ git update-ref -d refs/remotes/origin/master
+[exit 0]
+
+$ git push
+To /tmp/tmp.SA1yYdc8Oq/origin
+ ! [rejected]        master -> master (non-fast-forward)
+error: failed to push some refs to '/tmp/tmp.SA1yYdc8Oq/origin'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+$ git fetch -q
+[exit 0]
+
+===== обратное: коммит сервера в копии есть, origin/master старый
+$ git fetch -q origin master && git update-ref refs/remotes/origin/master HEAD~0 && git cat-file -t baedb01d5bf73a8c29ddc3f2f3b8e52a5f285d0d
+commit
+[exit 0]
+
+$ git push
+To /tmp/tmp.SA1yYdc8Oq/origin
+ ! [rejected]        master -> master (non-fast-forward)
+error: failed to push some refs to '/tmp/tmp.SA1yYdc8Oq/origin'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+[exit 1]
+
+$ git fetch -q
+[exit 0]
+
+===== git config pull.rebase false + pull на расхождении
+$ git status -sb
+## master...origin/master [ahead 1, behind 2]
+[exit 0]
+
+$ git config pull.rebase false
+[exit 0]
+
+$ git pull
+Merge made by the 'ort' strategy.
+ CHANGELOG.md | 2 ++
+ 1 file changed, 2 insertions(+)
+[exit 0]
+
+$ git push -q
+[exit 0]
+
+===== pull.ff only
+$ git config --unset pull.rebase
+[exit 0]
+
+$ git config pull.ff only
+[exit 0]
+
+$ git pull
+From /tmp/tmp.SA1yYdc8Oq/origin
+   c8a98e8..dd4980c  master     -> origin/master
+Updating c8a98e8..dd4980c
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+$ git pull
+From /tmp/tmp.SA1yYdc8Oq/origin
+   dd4980c..32c4224  master     -> origin/master
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+[exit 128]
+
+$ git config --unset pull.ff
+[exit 0]
+
+===== --ff-only на перемотке
+$ git pull --no-rebase -q
+[exit 0]
+
+$ git push -q
+[exit 0]
+
+$ git pull --ff-only
+From /tmp/tmp.SA1yYdc8Oq/origin
+   b6484d6..8b02ca2  master     -> origin/master
+Updating b6484d6..8b02ca2
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+===== push --force без расхождения
+$ git push --force
+To /tmp/tmp.SA1yYdc8Oq/origin
+   8b02ca2..a4e8356  master -> master
+[exit 0]
+
+===== ширина поля имени в fetch
+$ git fetch
+From /tmp/tmp.SA1yYdc8Oq/origin
+   a4e8356..831e330  master        -> origin/master
+ * [new branch]      feature       -> origin/feature
+ * [new branch]      feature-login -> origin/feature-login
+[exit 0]
+
+$ git fetch
+From /tmp/tmp.SA1yYdc8Oq/origin
+   a9f7935..bbada46  feature       -> origin/feature
+   f70b3b9..22bb29f  feature-login -> origin/feature-login
+[exit 0]
+
+RUN_DIR=/tmp/tmp.SA1yYdc8Oq
+
+===== [4] pull origin master без предварительного fetch, перемотка
+$ git pull origin master
+From /tmp/tmp.QZACieYaxV/origin
+ * branch            master     -> FETCH_HEAD
+   afe44c5..346466c  master     -> origin/master
+Updating afe44c5..346466c
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 CHANGELOG.md
+[exit 0]
+
+===== pull origin master на расхождении без настройки
+$ git pull origin master
+From /tmp/tmp.QZACieYaxV/origin
+ * branch            master     -> FETCH_HEAD
+   346466c..493ad50  master     -> origin/master
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+[exit 128]
+
+$ git status
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 1 and 1 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+[exit 0]
+
+RUN_DIR=/tmp/tmp.QZACieYaxV
+===== [4b] pull --no-rebase origin master на расхождении (продолжение [4])
+$ git pull --no-rebase origin master
+From /tmp/tmp.QZACieYaxV/origin
+ * branch            master     -> FETCH_HEAD
+Merge made by the 'ort' strategy.
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+$ git log -1 --format=%s
+Merge branch 'master' of /tmp/tmp.QZACieYaxV/origin
+
+
+===== ДОПОЛНИТЕЛЬНЫЕ ПРОГОНЫ: git 2.53.0, 26.09.2026, LC_ALL=C, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1
+# Сервер = bare 'origin' в mktemp -d, копия 'local', коллега — второй клон 'coll'.
+# «Расхождение»: коллега запушил c1 (CHANGELOG.md), в local свой незапушенный m1 (README.md).
+
+RUN_DIR=/tmp/tmp.28NoI6VTMc
+===== fetch с именем несуществующего сервера
+$ git fetch master
+fatal: 'master' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+[exit 128]
+
+$ git fetch nosuch
+fatal: 'nosuch' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+[exit 128]
+
+===== pull.rebase false И pull.ff only одновременно, расхождение
+$ git config pull.rebase false
+[exit 0]
+
+$ git config pull.ff only
+[exit 0]
+
+$ git pull
+From /tmp/tmp.28NoI6VTMc/origin
+   7c0e6a5..cba67f7  master     -> origin/master
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+[exit 128]
+
+$ git status -sb
+## master...origin/master [ahead 1, behind 1]
+[exit 0]
+
+----- обратный порядок записи настроек (обе сняты через --unset и заданы заново)
+$ git config pull.ff only
+[exit 0]
+
+$ git config pull.rebase false
+[exit 0]
+
+$ git pull
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+[exit 128]
+
+----- обе настройки, --no-rebase в командной строке
+$ git pull --no-rebase
+Merge made by the 'ort' strategy.
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 CHANGELOG.md
+[exit 0]
+
+$ git log -1 --format=%s
+Merge branch 'master' of /tmp/tmp.28NoI6VTMc/origin
+[exit 0]
+
+RUN_DIR=/tmp/tmp.AvRKzrU4P9
+===== pull.rebase false И pull.ff only, копия только отстаёт (перемотка)
+$ git pull
+From /tmp/tmp.AvRKzrU4P9/origin
+   7eb67e0..2d91705  master     -> origin/master
+Updating 7eb67e0..2d91705
+Fast-forward
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 CHANGELOG.md
+[exit 0]
+
+$ git status -sb
+## master...origin/master
+[exit 0]
+
+RUN_DIR=/tmp/tmp.EqCUtLrVgr
+===== только pull.ff only, расхождение, --no-rebase в командной строке
+$ git pull --no-rebase
+From /tmp/tmp.EqCUtLrVgr/origin
+   a770cfb..a601d52  master     -> origin/master
+Merge made by the 'ort' strategy.
+ CHANGELOG.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 CHANGELOG.md
+[exit 0]
+
+$ git log -1 --format=%s
+Merge branch 'master' of /tmp/tmp.EqCUtLrVgr/origin
+[exit 0]
+
+===== только pull.rebase false, расхождение, --ff-only в командной строке
+$ git pull --ff-only
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+[exit 128]
+
+RUN_DIR=/tmp/tmp.XvoWw6iih3
+===== без настроек, расхождение, --no-rebase и --ff-only вместе в командной строке
+$ git pull --no-rebase --ff-only
+From /tmp/tmp.XvoWw6iih3/origin
+   f3a1ca2..c153db2  master     -> origin/master
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+[exit 128]

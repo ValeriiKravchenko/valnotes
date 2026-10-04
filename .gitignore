@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Ссылки на файлы книг на Яндекс.Диске владельца — генерируются
+# scripts/build-book-links.mjs и загружаются только в его браузер.
+book-links.json
+.env*
+.musepool/

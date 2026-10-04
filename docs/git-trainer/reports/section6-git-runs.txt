@@ -1,0 +1,2044 @@
+# Прогоны git 2.53.0, 26.09.2026, LC_ALL=C, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1.
+# Репозиторий в mktemp -d; путь временного каталога в выводе не встречается. Авторы и даты заданы через GIT_AUTHOR_*/GIT_COMMITTER_*.
+# Хэши коммитов — настоящие, от содержимого; с хэшами source.html (a1b2c3d, e03f7a5…) не совпадают и совпасть не могут.
+# Формат: "$ команда", вывод (stdout+stderr), [exit код]. Вывод не на терминал — без цвета и пейджера.
+
+===== ВНЕ РЕПОЗИТОРИЯ
+$ git grep -n debounce
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[exit 128]
+
+$ git blame app.js
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[exit 128]
+
+$ git bisect start
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[exit 128]
+
+===== ИСТОРИЯ app.js (как BLAME_LINES в source.html)
+$ cat -n app.js
+     1	function renderCard(item) {
+     2	  const el = document.createElement("div");
+     3	  el.className = "card";
+     4	  el.textContent = item.title;
+     5	  el.dataset.id = item.id;
+     6	  return el;
+     7	}
+[exit 0]
+
+$ git log --oneline
+48071b4 Сохранять id товара в data-атрибуте
+0be07fd Добавить класс card для карточек
+2f6e013 Первая версия renderCard
+[exit 0]
+
+===== GREP
+$ git grep debounce
+README.md:TODO: добавить тесты для debounce.
+utils.js:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n "debounce"
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n Debounce
+[exit 1]
+
+$ git grep -n -i Debounce
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -ni Debounce
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n '"ru-RU"'
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+[exit 0]
+
+$ git grep -n "ru-RU"
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+[exit 0]
+
+$ git grep -n '"card"'
+app.js:3:  el.className = "card";
+[exit 0]
+
+$ git grep -n '=> fn'
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n a
+app.js:1:function renderCard(item) {
+app.js:2:  const el = document.createElement("div");
+app.js:3:  el.className = "card";
+app.js:5:  el.dataset.id = item.id;
+utils.js:1:export function formatDate(d) {
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+utils.js:5:export function debounce(fn, delay) {
+utils.js:7:  return (...args) => {
+utils.js:8:    clearTimeout(t);
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n 'x  y'
+[exit 1]
+
+$ git grep -n '(fn'
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n 'fn('
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n '...args'
+utils.js:7:  return (...args) => {
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n -F '...args'
+utils.js:7:  return (...args) => {
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n 'd.to'
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+[exit 0]
+
+$ git grep -c debounce
+README.md:1
+utils.js:1
+[exit 0]
+
+$ git grep -l debounce
+README.md
+utils.js
+[exit 0]
+
+$ git grep -n debounce -- utils.js
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce utils.js
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce nosuch.js
+fatal: ambiguous argument 'nosuch.js': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+[exit 128]
+
+$ git grep
+fatal: no pattern given
+[exit 128]
+
+$ git grep -x debounce
+error: unknown switch `x'
+usage: git grep [<options>] [-e] <pattern> [<rev>...] [[--] <path>...]
+
+    --[no-]cached         search in index instead of in the work tree
+    --no-index            find in contents not managed by git
+    --index               opposite of --no-index
+    --[no-]untracked      search in both tracked and untracked files
+    --[no-]exclude-standard
+                          ignore files specified via '.gitignore'
+    --[no-]recurse-submodules
+                          recursively search in each submodule
+
+    -v, --[no-]invert-match
+                          show non-matching lines
+    -i, --[no-]ignore-case
+                          case insensitive matching
+    -w, --[no-]word-regexp
+                          match patterns only at word boundaries
+    -a, --[no-]text       process binary files as text
+    -I                    don't match patterns in binary files
+    --[no-]textconv       process binary files with textconv filters
+    -r, --[no-]recursive  search in subdirectories (default)
+    --max-depth <n>       descend at most <n> levels
+
+    -E, --[no-]extended-regexp
+                          use extended POSIX regular expressions
+    -G, --[no-]basic-regexp
+                          use basic POSIX regular expressions (default)
+    -F, --[no-]fixed-strings
+                          interpret patterns as fixed strings
+    -P, --[no-]perl-regexp
+                          use Perl-compatible regular expressions
+
+    -n, --[no-]line-number
+                          show line numbers
+    --[no-]column         show column number of first match
+    -h                    don't show filenames
+    -H                    show filenames
+    --[no-]full-name      show filenames relative to top directory
+    -l, --[no-]files-with-matches
+                          show only filenames instead of matching lines
+    --[no-]name-only      synonym for --files-with-matches
+    -L, --[no-]files-without-match
+                          show only the names of files without match
+    -z, --[no-]null       print NUL after filenames
+    -o, --[no-]only-matching
+                          show only matching parts of a line
+    -c, --[no-]count      show the number of matches instead of matching lines
+    --[no-]color[=<when>] highlight matches
+    --[no-]break          print empty line between matches from different files
+    --[no-]heading        show filename only once above matches from same file
+
+    -C, --[no-]context <n>
+                          show <n> context lines before and after matches
+    -B, --before-context <n>
+                          show <n> context lines before matches
+    -A, --after-context <n>
+                          show <n> context lines after matches
+    --[no-]threads <n>    use <n> worker threads
+    -NUM                  shortcut for -C NUM
+    -p, --[no-]show-function
+                          show a line with the function name before matches
+    -W, --[no-]function-context
+                          show the surrounding function
+
+    -f <file>             read patterns from file
+    -e <pattern>          match <pattern>
+    --and                 combine patterns specified with -e
+    --or
+    --not
+    (
+    )
+    -q, --[no-]quiet      indicate hit with exit status without output
+    --[no-]all-match      show only matches from files that match all patterns
+
+    -O, --[no-]open-files-in-pager[=<pager>]
+                          show matching files in the pager
+    --[no-]ext-grep       allow calling of grep(1) (ignored by this build)
+    -m, --[no-]max-count <n>
+                          maximum number of results per file
+
+[exit 129]
+
+$ git grep -n -w card
+app.js:3:  el.className = "card";
+[exit 0]
+
+$ git grep -n 'Мини'
+README.md:1:# Мини-проект
+[exit 0]
+
+$ git grep -n -i 'мини'
+[exit 1]
+
+$ LC_ALL=C.UTF-8 git grep -n -i 'мини'
+README.md:1:# Мини-проект
+[exit 0]
+
+$ git grep -n -E '(fn'
+fatal: command line, '(fn': Unmatched ( or \(
+[exit 128]
+
+$ git grep -n -F '(fn'
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+--- правка в рабочем каталоге (не подготовлена) и неотслеживаемый файл
+$ git grep -n debounce
+README.md:4:TODO: добавить тесты для debounce.
+app.js:8:// debounce ещё раз
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n --cached debounce
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n --untracked debounce
+README.md:4:TODO: добавить тесты для debounce.
+app.js:8:// debounce ещё раз
+notes.txt:1:debounce
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce HEAD
+HEAD:README.md:4:TODO: добавить тесты для debounce.
+HEAD:utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce HEAD~2
+HEAD~2:README.md:4:TODO: добавить тесты для debounce.
+HEAD~2:utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+===== BLAME
+$ git blame app.js
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 1) function renderCard(item) {
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 2)   const el = document.createElement("div");
+0be07fd1 (Марина 2026-03-18 11:00:00 +0300 3)   el.className = "card";
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 4)   el.textContent = item.title;
+48071b4e (Марина 2026-04-02 12:00:00 +0300 5)   el.dataset.id = item.id;
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 6)   return el;
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 7) }
+[exit 0]
+
+$ git blame -s app.js
+^2f6e013 1) function renderCard(item) {
+^2f6e013 2)   const el = document.createElement("div");
+0be07fd1 3)   el.className = "card";
+^2f6e013 4)   el.textContent = item.title;
+48071b4e 5)   el.dataset.id = item.id;
+^2f6e013 6)   return el;
+^2f6e013 7) }
+[exit 0]
+
+$ git blame -L 5,5 app.js
+48071b4e (Марина 2026-04-02 12:00:00 +0300 5)   el.dataset.id = item.id;
+[exit 0]
+
+$ git blame -L 5 app.js
+48071b4e (Марина 2026-04-02 12:00:00 +0300 5)   el.dataset.id = item.id;
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 6)   return el;
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 7) }
+[exit 0]
+
+$ git blame -L 9,9 app.js
+fatal: file app.js has only 7 lines
+[exit 128]
+
+$ git blame README.md
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 1) # Мини-проект
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 2) 
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 3) Простой рендер карточек и пара утилит.
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 4) TODO: добавить тесты для debounce.
+[exit 0]
+
+$ git blame
+usage: git blame [<options>] [<rev-opts>] [<rev>] [--] <file>
+
+    <rev-opts> are documented in git-rev-list(1)
+
+    --[no-]incremental    show blame entries as we find them, incrementally
+    -b                    do not show object names of boundary commits (Default: off)
+    --[no-]root           do not treat root commits as boundaries (Default: off)
+    --[no-]show-stats     show work cost statistics
+    --[no-]progress       force progress reporting
+    --[no-]score-debug    show output score for blame entries
+    -f, --[no-]show-name  show original filename (Default: auto)
+    -n, --[no-]show-number
+                          show original linenumber (Default: off)
+    -p, --[no-]porcelain  show in a format designed for machine consumption
+    --[no-]line-porcelain show porcelain format with per-line commit information
+    -c                    use the same output mode as git-annotate (Default: off)
+    -t                    show raw timestamp (Default: off)
+    -l                    show long commit SHA1 (Default: off)
+    -s                    suppress author name and timestamp (Default: off)
+    -e, --[no-]show-email show author email instead of name (Default: off)
+    -w                    ignore whitespace differences
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --[no-]ignore-rev <rev>
+                          ignore <rev> when blaming
+    --[no-]ignore-revs-file <file>
+                          ignore revisions from <file>
+    --[no-]color-lines    color redundant metadata from previous line differently
+    --[no-]color-by-age   color lines by age
+    -S <file>             use revisions from <file> instead of calling git-rev-list
+    --[no-]contents <file>
+                          use <file>'s contents as the final image
+    -C[<score>]           find line copies within and across files
+    -M[<score>]           find line movements within and across files
+    -L <range>            process only line range <start>,<end> or function :<funcname>
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+
+[exit 129]
+
+$ git blame nosuch.js
+fatal: no such path 'nosuch.js' in HEAD
+[exit 128]
+
+$ git blame --date=short app.js
+^2f6e013 (Валера 2026-03-12 1) function renderCard(item) {
+^2f6e013 (Валера 2026-03-12 2)   const el = document.createElement("div");
+0be07fd1 (Марина 2026-03-18 3)   el.className = "card";
+^2f6e013 (Валера 2026-03-12 4)   el.textContent = item.title;
+48071b4e (Марина 2026-04-02 5)   el.dataset.id = item.id;
+^2f6e013 (Валера 2026-03-12 6)   return el;
+^2f6e013 (Валера 2026-03-12 7) }
+[exit 0]
+
+$ git blame -e app.js
+^2f6e013 (<valera@example.com> 2026-03-12 10:00:00 +0300 1) function renderCard(item) {
+^2f6e013 (<valera@example.com> 2026-03-12 10:00:00 +0300 2)   const el = document.createElement("div");
+0be07fd1 (<marina@example.com> 2026-03-18 11:00:00 +0300 3)   el.className = "card";
+^2f6e013 (<valera@example.com> 2026-03-12 10:00:00 +0300 4)   el.textContent = item.title;
+48071b4e (<marina@example.com> 2026-04-02 12:00:00 +0300 5)   el.dataset.id = item.id;
+^2f6e013 (<valera@example.com> 2026-03-12 10:00:00 +0300 6)   return el;
+^2f6e013 (<valera@example.com> 2026-03-12 10:00:00 +0300 7) }
+[exit 0]
+
+$ git show --stat 48071b4e
+commit 48071b4e012e27ea5d2093d61d4534155f07613c
+Author: Марина <marina@example.com>
+Date:   Thu Apr 2 12:00:00 2026 +0300
+
+    Сохранять id товара в data-атрибуте
+
+ app.js | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+$ git show -s 48071b4e
+commit 48071b4e012e27ea5d2093d61d4534155f07613c
+Author: Марина <marina@example.com>
+Date:   Thu Apr 2 12:00:00 2026 +0300
+
+    Сохранять id товара в data-атрибуте
+[exit 0]
+
+--- blame неподготовленной правки и неотслеживаемого файла
+$ git blame app.js
+^2f6e013 (Валера            2026-03-12 10:00:00 +0300 1) function renderCard(item) {
+^2f6e013 (Валера            2026-03-12 10:00:00 +0300 2)   const el = document.createElement("div");
+0be07fd1 (Марина            2026-03-18 11:00:00 +0300 3)   el.className = "card";
+00000000 (Not Committed Yet 2026-09-26 15:51:14 +0300 4)   el.textContent = item.name;
+48071b4e (Марина            2026-04-02 12:00:00 +0300 5)   el.dataset.id = item.id;
+^2f6e013 (Валера            2026-03-12 10:00:00 +0300 6)   return el;
+^2f6e013 (Валера            2026-03-12 10:00:00 +0300 7) }
+[exit 0]
+
+$ git blame notes.txt
+fatal: no such path 'notes.txt' in HEAD
+[exit 128]
+
+$ git blame -x app.js
+error: unknown option `-x'
+usage: git blame [<options>] [<rev-opts>] [<rev>] [--] <file>
+
+    <rev-opts> are documented in git-rev-list(1)
+
+    --[no-]incremental    show blame entries as we find them, incrementally
+    -b                    do not show object names of boundary commits (Default: off)
+    --[no-]root           do not treat root commits as boundaries (Default: off)
+    --[no-]show-stats     show work cost statistics
+    --[no-]progress       force progress reporting
+    --[no-]score-debug    show output score for blame entries
+    -f, --[no-]show-name  show original filename (Default: auto)
+    -n, --[no-]show-number
+                          show original linenumber (Default: off)
+    -p, --[no-]porcelain  show in a format designed for machine consumption
+    --[no-]line-porcelain show porcelain format with per-line commit information
+    -c                    use the same output mode as git-annotate (Default: off)
+    -t                    show raw timestamp (Default: off)
+    -l                    show long commit SHA1 (Default: off)
+    -s                    suppress author name and timestamp (Default: off)
+    -e, --[no-]show-email show author email instead of name (Default: off)
+    -w                    ignore whitespace differences
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --[no-]ignore-rev <rev>
+                          ignore <rev> when blaming
+    --[no-]ignore-revs-file <file>
+                          ignore revisions from <file>
+    --[no-]color-lines    color redundant metadata from previous line differently
+    --[no-]color-by-age   color lines by age
+    -S <file>             use revisions from <file> instead of calling git-rev-list
+    --[no-]contents <file>
+                          use <file>'s contents as the final image
+    -C[<score>]           find line copies within and across files
+    -M[<score>]           find line movements within and across files
+    -L <range>            process only line range <start>,<end> or function :<funcname>
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+
+[exit 129]
+
+===== BISECT: 9 коммитов c1..c9 (как BISECT_COMMITS), тест ломается в c7
+$ git log --oneline
+381b284 Обновить README
+1fff2a1 Правки текстов
+30e1688 Рефакторинг: обработчики кликов вынесены в отдельную функцию
+7827eee Проверка количества товара
+06e32ba Адаптивная сетка
+d42b40d Тёмная тема
+9f8eff4 Счётчик корзины в шапке
+6c38ab7 Стили карточек товаров
+5fc0c96 Первая версия магазина: список товаров и кнопка «Купить»
+[exit 0]
+
+$ git bisect good
+You need to start by "git bisect start"
+
+[exit 1]
+
+$ git bisect bad
+You need to start by "git bisect start"
+
+[exit 1]
+
+$ git bisect reset
+[exit 0]
+
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git status
+On branch master
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+[exit 0]
+
+$ git bisect good 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git status
+HEAD detached at 06e32ba
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ cat log.txt cart.txt
+c5
+counter: ok
+[exit 0]
+
+$ git bisect good
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ cat log.txt cart.txt
+c7
+counter: broken
+[exit 0]
+
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+[exit 0]
+
+$ cat log.txt cart.txt
+c6
+counter: ok
+[exit 0]
+
+$ git bisect good
+30e16885c53d14e63bbadb7210c8eec8586f01e0 is the first bad commit
+commit 30e16885c53d14e63bbadb7210c8eec8586f01e0
+Author: Валера <valera@example.com>
+Date:   Thu May 7 10:00:00 2026 +0300
+
+    Рефакторинг: обработчики кликов вынесены в отдельную функцию
+
+ cart.txt | 2 +-
+ log.txt  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+[exit 0]
+
+$ git status
+HEAD detached at 7827eee
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ cat log.txt cart.txt
+c6
+counter: ok
+[exit 0]
+
+$ git bisect good
+30e16885c53d14e63bbadb7210c8eec8586f01e0 is the first bad commit
+commit 30e16885c53d14e63bbadb7210c8eec8586f01e0
+Author: Валера <valera@example.com>
+Date:   Thu May 7 10:00:00 2026 +0300
+
+    Рефакторинг: обработчики кликов вынесены в отдельную функцию
+
+ cart.txt | 2 +-
+ log.txt  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+[exit 0]
+
+$ git bisect bad
+7827eee3002d117028c57e55800e9dd976c56efc was both good and bad
+[exit 1]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# status: waiting for good commit(s), bad commit known
+# good: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect good 5fc0c964f8ee117cc362a7c090d7b011606926d4
+# good: [06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+git bisect good 06e32ba04b2bfb69bdf3d258b41a380cf75946fd
+# bad: [30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+git bisect bad 30e16885c53d14e63bbadb7210c8eec8586f01e0
+# good: [7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+git bisect good 7827eee3002d117028c57e55800e9dd976c56efc
+# first bad commit: [30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+# good: [7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+git bisect good 7827eee3002d117028c57e55800e9dd976c56efc
+# first bad commit: [30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+# bad: [7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+git bisect bad 7827eee3002d117028c57e55800e9dd976c56efc
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 7827eee Проверка количества товара
+Switched to branch 'master'
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect reset
+[exit 0]
+
+--- start с диапазоном в одной команде
+$ git bisect start HEAD 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 06e32ba Адаптивная сетка
+Switched to branch 'master'
+[exit 0]
+
+--- ошибочная отметка: c5 (тест прошёл) отмечен плохим
+$ git bisect bad
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[9f8eff4f918f84c798bd342bb3e5b64c5b765d23] Счётчик корзины в шапке
+[exit 0]
+
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[6c38ab77f62f7404e9369b9e1ff7ff9f7086a85b] Стили карточек товаров
+[exit 0]
+
+$ git bisect good
+9f8eff4f918f84c798bd342bb3e5b64c5b765d23 is the first bad commit
+commit 9f8eff4f918f84c798bd342bb3e5b64c5b765d23
+Author: Валера <valera@example.com>
+Date:   Sun May 3 10:00:00 2026 +0300
+
+    Счётчик корзины в шапке
+
+ log.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 6c38ab7 Стили карточек товаров
+Switched to branch 'master'
+[exit 0]
+
+--- good на коммите новее bad
+$ git bisect bad 5fc0c96
+Some good revs are not ancestors of the bad rev.
+git bisect cannot work properly in this case.
+Maybe you mistook good and bad revs?
+[exit 1]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+--- неизвестная подкоманда, лишние аргументы, неизвестная ссылка
+$ git bisect foo
+fatal: unknown command: 'foo'
+
+usage: git bisect start [--term-(bad|new)=<term-new> --term-(good|old)=<term-old>]
+                        [--no-checkout] [--first-parent] [<bad> [<good>...]] [--] [<pathspec>...]
+   or: git bisect (bad|new|<term-new>) [<rev>]
+   or: git bisect (good|old|<term-old>) [<rev>...]
+   or: git bisect terms [--term-(good|old) | --term-(bad|new)]
+   or: git bisect skip [(<rev>|<range>)...]
+   or: git bisect next
+   or: git bisect reset [<commit>]
+   or: git bisect (visualize|view)
+   or: git bisect replay <logfile>
+   or: git bisect log
+   or: git bisect run <cmd> [<arg>...]
+   or: git bisect help
+
+[exit 129]
+
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect good nosuch
+error: Bad rev input: nosuch
+[exit 1]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+$ git bisect
+fatal: need a command
+
+usage: git bisect start [--term-(bad|new)=<term-new> --term-(good|old)=<term-old>]
+                        [--no-checkout] [--first-parent] [<bad> [<good>...]] [--] [<pathspec>...]
+   or: git bisect (bad|new|<term-new>) [<rev>]
+   or: git bisect (good|old|<term-old>) [<rev>...]
+   or: git bisect terms [--term-(good|old) | --term-(bad|new)]
+   or: git bisect skip [(<rev>|<range>)...]
+   or: git bisect next
+   or: git bisect reset [<commit>]
+   or: git bisect (visualize|view)
+   or: git bisect replay <logfile>
+   or: git bisect log
+   or: git bisect run <cmd> [<arg>...]
+   or: git bisect help
+
+[exit 129]
+
+--- правки в рабочем каталоге перед start
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+[exit 0]
+
+$ git bisect good 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+error: Your local changes to the following files would be overwritten by checkout:
+	log.txt
+Please commit your changes or stash them before you switch branches.
+Aborting
+[exit 1]
+
+$ git bisect reset
+Already on 'master'
+M	log.txt
+[exit 0]
+
+--- сообщения о шагах для всех диапазонов (bad=HEAD, good=cK)
+$ git bisect start HEAD <c1>
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+
+$ git bisect start HEAD <c2>
+Already on 'master'
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+
+$ git bisect start HEAD <c3>
+Already on 'master'
+Bisecting: 2 revisions left to test after this (roughly 2 steps)
+[7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+
+$ git bisect start HEAD <c4>
+Already on 'master'
+Bisecting: 2 revisions left to test after this (roughly 1 step)
+[7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+
+$ git bisect start HEAD <c5>
+Already on 'master'
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+
+$ git bisect start HEAD <c6>
+Already on 'master'
+Bisecting: 0 revisions left to test after this (roughly 1 step)
+[1fff2a1d4d897dc92e74811582ca9e1957f3de3e] Правки текстов
+
+$ git bisect start HEAD <c7>
+Already on 'master'
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[1fff2a1d4d897dc92e74811582ca9e1957f3de3e] Правки текстов
+
+$ git bisect start HEAD <c8>
+Already on 'master'
+381b284f6efa3b302d3a5e8cbba5f09ae569784d is the first bad commit
+commit 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+Author: Валера <valera@example.com>
+Date:   Sat May 9 10:00:00 2026 +0300
+
+    Обновить README
+
+ log.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+
+################################################################
+# ДОПОЛНИТЕЛЬНЫЕ ПРОГОНЫ, git 2.53.0, 26.09.2026. Условия те же.
+# Репозитории собраны тем же скриптом, хэши совпадают с прогонами выше.
+# Каждая команда, меняющая состояние, показана; скрытых шагов нет.
+################################################################
+
+$ git log --oneline
+48071b4 Сохранять id товара в data-атрибуте
+0be07fd Добавить класс card для карточек
+2f6e013 Первая версия renderCard
+[exit 0]
+
+===== Д1. GREP: особые символы BRE
+$ git grep -n 'rend.r'
+app.js:1:function renderCard(item) {
+[exit 0]
+
+$ git grep -n 'deb*ounce'
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n 'debx*ounce'
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n '^export'
+utils.js:1:export function formatDate(d) {
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n 'delay)$'
+[exit 1]
+
+$ git grep -n '[fd]elay'
+utils.js:5:export function debounce(fn, delay) {
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n '\(fn'
+fatal: command line, '\(fn': Unmatched ( or \(
+[exit 128]
+
+$ git grep -n 'item.'
+app.js:1:function renderCard(item) {
+app.js:4:  el.textContent = item.title;
+app.js:5:  el.dataset.id = item.id;
+[exit 0]
+
+$ git grep -n -F 'item.'
+app.js:4:  el.textContent = item.title;
+app.js:5:  el.dataset.id = item.id;
+[exit 0]
+
+$ git grep -n '['
+fatal: command line, '[': Invalid regular expression
+[exit 128]
+
+===== Д2. GREP: два слова без кавычек
+$ git grep -n x y
+fatal: ambiguous argument 'y': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+[exit 128]
+
+$ git grep -n export function
+fatal: ambiguous argument 'function': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+[exit 128]
+
+===== Д3. GREP: несуществующий путь после --
+$ git grep -n debounce -- nosuch.js
+[exit 1]
+
+$ git grep -n debounce -- utils.js nosuch.js
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+===== Д4. GREP по коммиту: префикс строк
+$ git grep -n debounce 48071b4
+48071b4:README.md:4:TODO: добавить тесты для debounce.
+48071b4:utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce 48071b4e012e27ea5d2093d61d4534155f07613c
+48071b4e012e27ea5d2093d61d4534155f07613c:README.md:4:TODO: добавить тесты для debounce.
+48071b4e012e27ea5d2093d61d4534155f07613c:utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n debounce master
+master:README.md:4:TODO: добавить тесты для debounce.
+master:utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n card 2f6e013
+[exit 1]
+
+$ git grep -n card HEAD
+HEAD:app.js:3:  el.className = "card";
+[exit 0]
+
+$ git grep -n debounce 48071b4 -- utils.js
+48071b4:utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+===== Д5. BLAME -s: ширина номера, пустая строка
+$ git blame -s utils.js
+^2f6e013  1) export function formatDate(d) {
+^2f6e013  2)   return d.toLocaleDateString("ru-RU");
+^2f6e013  3) }
+^2f6e013  4) 
+^2f6e013  5) export function debounce(fn, delay) {
+^2f6e013  6)   let t;
+^2f6e013  7)   return (...args) => {
+^2f6e013  8)     clearTimeout(t);
+^2f6e013  9)     t = setTimeout(() => fn(...args), delay);
+^2f6e013 10)   };
+^2f6e013 11) }
+[exit 0]
+
+$ git blame -s README.md
+^2f6e013 1) # Мини-проект
+^2f6e013 2) 
+^2f6e013 3) Простой рендер карточек и пара утилит.
+^2f6e013 4) TODO: добавить тесты для debounce.
+[exit 0]
+
+$ git blame utils.js
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  1) export function formatDate(d) {
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  2)   return d.toLocaleDateString("ru-RU");
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  3) }
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  4) 
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  5) export function debounce(fn, delay) {
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  6)   let t;
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  7)   return (...args) => {
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  8)     clearTimeout(t);
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300  9)     t = setTimeout(() => fn(...args), delay);
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 10)   };
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 11) }
+[exit 0]
+
+$ git blame -s -L 2,3 app.js
+^2f6e013 2)   const el = document.createElement("div");
+0be07fd1 3)   el.className = "card";
+[exit 0]
+
+$ git blame -L 2,3 app.js
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 2)   const el = document.createElement("div");
+0be07fd1 (Марина 2026-03-18 11:00:00 +0300 3)   el.className = "card";
+[exit 0]
+
+$ git blame -L 3,2 app.js
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 2)   const el = document.createElement("div");
+0be07fd1 (Марина 2026-03-18 11:00:00 +0300 3)   el.className = "card";
+[exit 0]
+
+$ git blame -L 0,2 app.js
+fatal: -L invalid line number: 0
+[exit 128]
+
+===== Д6. BLAME -s: ошибки
+$ git blame -s nosuch.js
+fatal: no such path 'nosuch.js' in HEAD
+[exit 128]
+
+$ git blame -s -L 9,9 app.js
+fatal: file app.js has only 7 lines
+[exit 128]
+
+$ git blame -s
+usage: git blame [<options>] [<rev-opts>] [<rev>] [--] <file>
+
+    <rev-opts> are documented in git-rev-list(1)
+
+    --[no-]incremental    show blame entries as we find them, incrementally
+    -b                    do not show object names of boundary commits (Default: off)
+    --[no-]root           do not treat root commits as boundaries (Default: off)
+    --[no-]show-stats     show work cost statistics
+    --[no-]progress       force progress reporting
+    --[no-]score-debug    show output score for blame entries
+    -f, --[no-]show-name  show original filename (Default: auto)
+    -n, --[no-]show-number
+                          show original linenumber (Default: off)
+    -p, --[no-]porcelain  show in a format designed for machine consumption
+    --[no-]line-porcelain show porcelain format with per-line commit information
+    -c                    use the same output mode as git-annotate (Default: off)
+    -t                    show raw timestamp (Default: off)
+    -l                    show long commit SHA1 (Default: off)
+    -s                    suppress author name and timestamp (Default: off)
+    -e, --[no-]show-email show author email instead of name (Default: off)
+    -w                    ignore whitespace differences
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --[no-]ignore-rev <rev>
+                          ignore <rev> when blaming
+    --[no-]ignore-revs-file <file>
+                          ignore revisions from <file>
+    --[no-]color-lines    color redundant metadata from previous line differently
+    --[no-]color-by-age   color lines by age
+    -S <file>             use revisions from <file> instead of calling git-rev-list
+    --[no-]contents <file>
+                          use <file>'s contents as the final image
+    -C[<score>]           find line copies within and across files
+    -M[<score>]           find line movements within and across files
+    -L <range>            process only line range <start>,<end> or function :<funcname>
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+
+[exit 129]
+
+$ git blame -L app.js
+usage: git blame [<options>] [<rev-opts>] [<rev>] [--] <file>
+
+    <rev-opts> are documented in git-rev-list(1)
+
+    --[no-]incremental    show blame entries as we find them, incrementally
+    -b                    do not show object names of boundary commits (Default: off)
+    --[no-]root           do not treat root commits as boundaries (Default: off)
+    --[no-]show-stats     show work cost statistics
+    --[no-]progress       force progress reporting
+    --[no-]score-debug    show output score for blame entries
+    -f, --[no-]show-name  show original filename (Default: auto)
+    -n, --[no-]show-number
+                          show original linenumber (Default: off)
+    -p, --[no-]porcelain  show in a format designed for machine consumption
+    --[no-]line-porcelain show porcelain format with per-line commit information
+    -c                    use the same output mode as git-annotate (Default: off)
+    -t                    show raw timestamp (Default: off)
+    -l                    show long commit SHA1 (Default: off)
+    -s                    suppress author name and timestamp (Default: off)
+    -e, --[no-]show-email show author email instead of name (Default: off)
+    -w                    ignore whitespace differences
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --[no-]ignore-rev <rev>
+                          ignore <rev> when blaming
+    --[no-]ignore-revs-file <file>
+                          ignore revisions from <file>
+    --[no-]color-lines    color redundant metadata from previous line differently
+    --[no-]color-by-age   color lines by age
+    -S <file>             use revisions from <file> instead of calling git-rev-list
+    --[no-]contents <file>
+                          use <file>'s contents as the final image
+    -C[<score>]           find line copies within and across files
+    -M[<score>]           find line movements within and across files
+    -L <range>            process only line range <start>,<end> or function :<funcname>
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+
+[exit 129]
+
+$ git blame app.js utils.js
+fatal: bad revision 'app.js'
+[exit 128]
+
+===== BISECT: репозиторий «Магазин», как в прогонах выше
+$ git log --oneline
+381b284 Обновить README
+1fff2a1 Правки текстов
+30e1688 Рефакторинг: обработчики кликов вынесены в отдельную функцию
+7827eee Проверка количества товара
+06e32ba Адаптивная сетка
+d42b40d Тёмная тема
+9f8eff4 Счётчик корзины в шапке
+6c38ab7 Стили карточек товаров
+5fc0c96 Первая версия магазина: список товаров и кнопка «Купить»
+[exit 0]
+
+===== Д7. start, затем good раньше bad
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect good 5fc0c96
+status: waiting for bad commit, 1 good commit known
+[exit 0]
+
+$ git status
+On branch master
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect bad
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 06e32ba Адаптивная сетка
+Switched to branch 'master'
+[exit 0]
+
+===== Д8. start при идущем bisect
+--- (а) bisect ещё не переключал HEAD (на master)
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git branch
+* master
+[exit 0]
+
+$ git bisect start
+Already on 'master'
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+--- (б) HEAD отсоединён (bisect идёт)
+$ git bisect start HEAD 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ git bisect start
+Previous HEAD position was 06e32ba Адаптивная сетка
+Switched to branch 'master'
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git branch
+* master
+[exit 0]
+
+$ git status
+On branch master
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+$ git branch
+* master
+[exit 0]
+
+--- (в) откуда «Already on 'master'»: reset без переключения HEAD
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+$ git bisect reset
+[exit 0]
+
+--- (г) start с диапазоном сразу после reset
+$ git bisect start HEAD 6c38ab7
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 06e32ba Адаптивная сетка
+Switched to branch 'master'
+[exit 0]
+
+===== Д9. good на коммите новее bad — полная последовательность
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect good
+status: waiting for bad commit, 1 good commit known
+[exit 0]
+
+$ git bisect bad 5fc0c96
+Some good revs are not ancestors of the bad rev.
+git bisect cannot work properly in this case.
+Maybe you mistook good and bad revs?
+[exit 1]
+
+$ git status
+On branch master
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* master
+[exit 0]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# good: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect good 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# status: waiting for bad commit, 1 good commit known
+# bad: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect bad 5fc0c964f8ee117cc362a7c090d7b011606926d4
+[exit 0]
+
+$ git bisect good 5fc0c96
+Some good revs are not ancestors of the bad rev.
+git bisect cannot work properly in this case.
+Maybe you mistook good and bad revs?
+[exit 1]
+
+$ git bisect reset
+Already on 'master'
+[exit 0]
+
+--- то же одной командой
+$ git bisect start 5fc0c96 HEAD
+Some good revs are not ancestors of the bad rev.
+git bisect cannot work properly in this case.
+Maybe you mistook good and bad revs?
+[exit 1]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect reset
+[exit 0]
+
+===== Д10. повторные отметки вне текущего диапазона
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+[exit 0]
+
+$ git bisect good 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect good
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# status: waiting for good commit(s), bad commit known
+# good: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect good 5fc0c964f8ee117cc362a7c090d7b011606926d4
+# good: [06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+git bisect good 06e32ba04b2bfb69bdf3d258b41a380cf75946fd
+[exit 0]
+
+--- сейчас good=c5, bad=c9, HEAD=c7
+$ git bisect bad 381b284
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect good 9f8eff4
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+[exit 0]
+
+--- сейчас good=c5, bad=c7, HEAD=c6
+$ git bisect bad 381b284
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect good 9f8eff4
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# status: waiting for good commit(s), bad commit known
+# good: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect good 5fc0c964f8ee117cc362a7c090d7b011606926d4
+# good: [06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+git bisect good 06e32ba04b2bfb69bdf3d258b41a380cf75946fd
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# good: [9f8eff4f918f84c798bd342bb3e5b64c5b765d23] Счётчик корзины в шапке
+git bisect good 9f8eff4f918f84c798bd342bb3e5b64c5b765d23
+# bad: [30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+git bisect bad 30e16885c53d14e63bbadb7210c8eec8586f01e0
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# good: [9f8eff4f918f84c798bd342bb3e5b64c5b765d23] Счётчик корзины в шапке
+git bisect good 9f8eff4f918f84c798bd342bb3e5b64c5b765d23
+[exit 0]
+
+$ git bisect good
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[1fff2a1d4d897dc92e74811582ca9e1957f3de3e] Правки текстов
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 1fff2a1 Правки текстов
+Switched to branch 'master'
+[exit 0]
+
+
+################################################################
+# ДОПОЛНИТЕЛЬНЫЕ ПРОГОНЫ, ЧАСТЬ 2, git 2.53.0, 26.09.2026. Условия те же.
+# Репозитории собраны тем же скриптом, хэши совпадают с прогонами выше.
+# Каждая команда, меняющая состояние, показана; скрытых шагов нет.
+################################################################
+
+$ git log --oneline
+48071b4 Сохранять id товара в data-атрибуте
+0be07fd Добавить класс card для карточек
+2f6e013 Первая версия renderCard
+[exit 0]
+
+===== Д11. «Проект»: полный git log и git show с diff
+$ git log
+commit 48071b4e012e27ea5d2093d61d4534155f07613c
+Author: Марина <marina@example.com>
+Date:   Thu Apr 2 12:00:00 2026 +0300
+
+    Сохранять id товара в data-атрибуте
+
+commit 0be07fd17de57f7b98b5cc024329517ae2bb537d
+Author: Марина <marina@example.com>
+Date:   Wed Mar 18 11:00:00 2026 +0300
+
+    Добавить класс card для карточек
+
+commit 2f6e0130cfc4e6b4745bdfeeb43a6f88774664fc
+Author: Валера <valera@example.com>
+Date:   Thu Mar 12 10:00:00 2026 +0300
+
+    Первая версия renderCard
+[exit 0]
+
+$ git log --format='%h %an <%ae> %ad'
+48071b4 Марина <marina@example.com> Thu Apr 2 12:00:00 2026 +0300
+0be07fd Марина <marina@example.com> Wed Mar 18 11:00:00 2026 +0300
+2f6e013 Валера <valera@example.com> Thu Mar 12 10:00:00 2026 +0300
+[exit 0]
+
+$ git show
+commit 48071b4e012e27ea5d2093d61d4534155f07613c
+Author: Марина <marina@example.com>
+Date:   Thu Apr 2 12:00:00 2026 +0300
+
+    Сохранять id товара в data-атрибуте
+
+diff --git a/app.js b/app.js
+index ae1729a..e8833fd 100644
+--- a/app.js
++++ b/app.js
+@@ -2,5 +2,6 @@ function renderCard(item) {
+   const el = document.createElement("div");
+   el.className = "card";
+   el.textContent = item.title;
++  el.dataset.id = item.id;
+   return el;
+ }
+[exit 0]
+
+$ git show 0be07fd
+commit 0be07fd17de57f7b98b5cc024329517ae2bb537d
+Author: Марина <marina@example.com>
+Date:   Wed Mar 18 11:00:00 2026 +0300
+
+    Добавить класс card для карточек
+
+diff --git a/app.js b/app.js
+index e70746f..ae1729a 100644
+--- a/app.js
++++ b/app.js
+@@ -1,5 +1,6 @@
+ function renderCard(item) {
+   const el = document.createElement("div");
++  el.className = "card";
+   el.textContent = item.title;
+   return el;
+ }
+[exit 0]
+
+$ git show 2f6e013
+commit 2f6e0130cfc4e6b4745bdfeeb43a6f88774664fc
+Author: Валера <valera@example.com>
+Date:   Thu Mar 12 10:00:00 2026 +0300
+
+    Первая версия renderCard
+
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..02ff857
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,4 @@
++# Мини-проект
++
++Простой рендер карточек и пара утилит.
++TODO: добавить тесты для debounce.
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..e70746f
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,5 @@
++function renderCard(item) {
++  const el = document.createElement("div");
++  el.textContent = item.title;
++  return el;
++}
+diff --git a/utils.js b/utils.js
+new file mode 100644
+index 0000000..838fa16
+--- /dev/null
++++ b/utils.js
+@@ -0,0 +1,11 @@
++export function formatDate(d) {
++  return d.toLocaleDateString("ru-RU");
++}
++
++export function debounce(fn, delay) {
++  let t;
++  return (...args) => {
++    clearTimeout(t);
++    t = setTimeout(() => fn(...args), delay);
++  };
++}
+[exit 0]
+
+$ git log app.js
+commit 48071b4e012e27ea5d2093d61d4534155f07613c
+Author: Марина <marina@example.com>
+Date:   Thu Apr 2 12:00:00 2026 +0300
+
+    Сохранять id товара в data-атрибуте
+
+commit 0be07fd17de57f7b98b5cc024329517ae2bb537d
+Author: Марина <marina@example.com>
+Date:   Wed Mar 18 11:00:00 2026 +0300
+
+    Добавить класс card для карточек
+
+commit 2f6e0130cfc4e6b4745bdfeeb43a6f88774664fc
+Author: Валера <valera@example.com>
+Date:   Thu Mar 12 10:00:00 2026 +0300
+
+    Первая версия renderCard
+[exit 0]
+
+$ git log --oneline app.js
+48071b4 Сохранять id товара в data-атрибуте
+0be07fd Добавить класс card для карточек
+2f6e013 Первая версия renderCard
+[exit 0]
+
+===== Д12. GREP: $ как якорь, отрицание и диапазоны в [], классы, экранирование
+$ git grep -n '{$'
+app.js:1:function renderCard(item) {
+utils.js:1:export function formatDate(d) {
+utils.js:5:export function debounce(fn, delay) {
+utils.js:7:  return (...args) => {
+[exit 0]
+
+$ git grep -n 'delay);$'
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n ';$'
+app.js:2:  const el = document.createElement("div");
+app.js:3:  el.className = "card";
+app.js:4:  el.textContent = item.title;
+app.js:5:  el.dataset.id = item.id;
+app.js:6:  return el;
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+utils.js:6:  let t;
+utils.js:8:    clearTimeout(t);
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+utils.js:10:  };
+[exit 0]
+
+$ git grep -n '^$'
+README.md:2:
+README.md:5:
+app.js:8:
+utils.js:4:
+utils.js:12:
+[exit 0]
+
+$ git grep -n '[a-z]('
+app.js:1:function renderCard(item) {
+app.js:2:  const el = document.createElement("div");
+utils.js:1:export function formatDate(d) {
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+utils.js:5:export function debounce(fn, delay) {
+utils.js:8:    clearTimeout(t);
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n '[^a-z]('
+utils.js:7:  return (...args) => {
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n 'item[^.]'
+app.js:1:function renderCard(item) {
+[exit 0]
+
+$ git grep -n '[[:upper:]]'
+README.md:4:TODO: добавить тесты для debounce.
+app.js:1:function renderCard(item) {
+app.js:2:  const el = document.createElement("div");
+app.js:3:  el.className = "card";
+app.js:4:  el.textContent = item.title;
+utils.js:1:export function formatDate(d) {
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+utils.js:8:    clearTimeout(t);
+utils.js:9:    t = setTimeout(() => fn(...args), delay);
+[exit 0]
+
+$ git grep -n '[[:digit:]]'
+[exit 1]
+
+$ git grep -n 'item\.id'
+app.js:5:  el.dataset.id = item.id;
+[exit 0]
+
+$ git grep -n 'd\.to'
+utils.js:2:  return d.toLocaleDateString("ru-RU");
+[exit 0]
+
+$ git grep -n 'x\+'
+app.js:4:  el.textContent = item.title;
+utils.js:1:export function formatDate(d) {
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n 'de\(b\)ounce'
+README.md:4:TODO: добавить тесты для debounce.
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n 'renderCard\|debounce'
+README.md:4:TODO: добавить тесты для debounce.
+app.js:1:function renderCard(item) {
+utils.js:5:export function debounce(fn, delay) {
+[exit 0]
+
+$ git grep -n '[z-a]'
+fatal: command line, '[z-a]': Invalid range end
+[exit 128]
+
+$ git grep -n 'a\'
+fatal: command line, 'a\': Trailing backslash
+[exit 128]
+
+===== Д13. BLAME: ширина номера при -L в 11-строчном файле
+$ git blame -s -L 1,3 utils.js
+^2f6e013 1) export function formatDate(d) {
+^2f6e013 2)   return d.toLocaleDateString("ru-RU");
+^2f6e013 3) }
+[exit 0]
+
+$ git blame -s -L 9,11 utils.js
+^2f6e013  9)     t = setTimeout(() => fn(...args), delay);
+^2f6e013 10)   };
+^2f6e013 11) }
+[exit 0]
+
+$ git blame -s -L 10,11 utils.js
+^2f6e013 10)   };
+^2f6e013 11) }
+[exit 0]
+
+$ git blame -L 1,3 utils.js
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 1) export function formatDate(d) {
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 2)   return d.toLocaleDateString("ru-RU");
+^2f6e013 (Валера 2026-03-12 10:00:00 +0300 3) }
+[exit 0]
+
+$ git blame -s -L 5,5 app.js
+48071b4e 5)   el.dataset.id = item.id;
+[exit 0]
+
+===== «Магазин»
+===== Д14. «Магазин»: авторы и даты всех коммитов
+$ git log --format='%h %an <%ae> %ad'
+381b284 Валера <valera@example.com> Sat May 9 10:00:00 2026 +0300
+1fff2a1 Валера <valera@example.com> Fri May 8 10:00:00 2026 +0300
+30e1688 Валера <valera@example.com> Thu May 7 10:00:00 2026 +0300
+7827eee Валера <valera@example.com> Wed May 6 10:00:00 2026 +0300
+06e32ba Валера <valera@example.com> Tue May 5 10:00:00 2026 +0300
+d42b40d Валера <valera@example.com> Mon May 4 10:00:00 2026 +0300
+9f8eff4 Валера <valera@example.com> Sun May 3 10:00:00 2026 +0300
+6c38ab7 Валера <valera@example.com> Sat May 2 10:00:00 2026 +0300
+5fc0c96 Валера <valera@example.com> Fri May 1 10:00:00 2026 +0300
+[exit 0]
+
+$ git log
+commit 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+Author: Валера <valera@example.com>
+Date:   Sat May 9 10:00:00 2026 +0300
+
+    Обновить README
+
+commit 1fff2a1d4d897dc92e74811582ca9e1957f3de3e
+Author: Валера <valera@example.com>
+Date:   Fri May 8 10:00:00 2026 +0300
+
+    Правки текстов
+
+commit 30e16885c53d14e63bbadb7210c8eec8586f01e0
+Author: Валера <valera@example.com>
+Date:   Thu May 7 10:00:00 2026 +0300
+
+    Рефакторинг: обработчики кликов вынесены в отдельную функцию
+
+commit 7827eee3002d117028c57e55800e9dd976c56efc
+Author: Валера <valera@example.com>
+Date:   Wed May 6 10:00:00 2026 +0300
+
+    Проверка количества товара
+
+commit 06e32ba04b2bfb69bdf3d258b41a380cf75946fd
+Author: Валера <valera@example.com>
+Date:   Tue May 5 10:00:00 2026 +0300
+
+    Адаптивная сетка
+
+commit d42b40d52c127d2ed775c8ae01becd8349666d81
+Author: Валера <valera@example.com>
+Date:   Mon May 4 10:00:00 2026 +0300
+
+    Тёмная тема
+
+commit 9f8eff4f918f84c798bd342bb3e5b64c5b765d23
+Author: Валера <valera@example.com>
+Date:   Sun May 3 10:00:00 2026 +0300
+
+    Счётчик корзины в шапке
+
+commit 6c38ab77f62f7404e9369b9e1ff7ff9f7086a85b
+Author: Валера <valera@example.com>
+Date:   Sat May 2 10:00:00 2026 +0300
+
+    Стили карточек товаров
+
+commit 5fc0c964f8ee117cc362a7c090d7b011606926d4
+Author: Валера <valera@example.com>
+Date:   Fri May 1 10:00:00 2026 +0300
+
+    Первая версия магазина: список товаров и кнопка «Купить»
+[exit 0]
+
+$ git show 30e1688
+commit 30e16885c53d14e63bbadb7210c8eec8586f01e0
+Author: Валера <valera@example.com>
+Date:   Thu May 7 10:00:00 2026 +0300
+
+    Рефакторинг: обработчики кликов вынесены в отдельную функцию
+
+diff --git a/cart.txt b/cart.txt
+index ccfbc3b..c92820a 100644
+--- a/cart.txt
++++ b/cart.txt
+@@ -1 +1 @@
+-counter: ok
++counter: broken
+diff --git a/log.txt b/log.txt
+index 86a7165..20be687 100644
+--- a/log.txt
++++ b/log.txt
+@@ -1 +1 @@
+-c6
++c7
+[exit 0]
+
+$ git show -s 30e1688
+commit 30e16885c53d14e63bbadb7210c8eec8586f01e0
+Author: Валера <valera@example.com>
+Date:   Thu May 7 10:00:00 2026 +0300
+
+    Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+===== Д15. bisect: две хорошие отметки до плохой
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect good 5fc0c96
+status: waiting for bad commit, 1 good commit known
+[exit 0]
+
+$ git bisect good 6c38ab7
+status: waiting for bad commit, 2 good commits known
+[exit 0]
+
+$ git bisect good 9f8eff4
+status: waiting for bad commit, 3 good commits known
+[exit 0]
+
+$ git bisect bad
+Bisecting: 2 revisions left to test after this (roughly 2 steps)
+[7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 7827eee Проверка количества товара
+Switched to branch 'master'
+[exit 0]
+
+===== Д16. bisect: good на коммите, отмеченном плохим
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+[exit 0]
+
+$ git bisect good 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect good
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[7827eee3002d117028c57e55800e9dd976c56efc] Проверка количества товара
+[exit 0]
+
+--- сейчас good=c5, bad=c7, HEAD=c6
+$ git bisect good 30e1688
+30e16885c53d14e63bbadb7210c8eec8586f01e0 was both good and bad
+[exit 1]
+
+$ git status
+HEAD detached at 7827eee
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# status: waiting for good commit(s), bad commit known
+# good: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect good 5fc0c964f8ee117cc362a7c090d7b011606926d4
+# good: [06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+git bisect good 06e32ba04b2bfb69bdf3d258b41a380cf75946fd
+# bad: [30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+git bisect bad 30e16885c53d14e63bbadb7210c8eec8586f01e0
+# good: [30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+git bisect good 30e16885c53d14e63bbadb7210c8eec8586f01e0
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 7827eee Проверка количества товара
+Switched to branch 'master'
+[exit 0]
+
+--- то же: bad на коммите, отмеченном хорошим
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+[exit 0]
+
+$ git bisect good 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect bad 5fc0c96
+5fc0c964f8ee117cc362a7c090d7b011606926d4 was both good and bad
+[exit 1]
+
+$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+git bisect bad 381b284f6efa3b302d3a5e8cbba5f09ae569784d
+# status: waiting for good commit(s), bad commit known
+# good: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect good 5fc0c964f8ee117cc362a7c090d7b011606926d4
+# bad: [5fc0c964f8ee117cc362a7c090d7b011606926d4] Первая версия магазина: список товаров и кнопка «Купить»
+git bisect bad 5fc0c964f8ee117cc362a7c090d7b011606926d4
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 06e32ba Адаптивная сетка
+Switched to branch 'master'
+[exit 0]
+
+===== Д17. bisect start <bad> <good> при идущем bisect
+--- (а) HEAD отсоединён
+$ git bisect start HEAD 5fc0c96
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+[exit 0]
+
+$ git bisect good
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ git bisect start 381b284 06e32ba
+Previous HEAD position was 30e1688 Рефакторинг: обработчики кликов вынесены в отдельную функцию
+Switched to branch 'master'
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git branch
+* (no branch, bisect started on master)
+  master
+[exit 0]
+
+$ git status
+HEAD detached at 30e1688
+You are currently bisecting, started from branch 'master'.
+  (use "git bisect reset" to get back to the original branch)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git bisect log
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+# good: [06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+git bisect start '381b284' '06e32ba'
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 30e1688 Рефакторинг: обработчики кликов вынесены в отдельную функцию
+Switched to branch 'master'
+[exit 0]
+
+--- (б) bisect начат, HEAD ещё на master
+$ git bisect start
+status: waiting for both good and bad commits
+[exit 0]
+
+$ git bisect start 381b284 06e32ba
+Already on 'master'
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[30e16885c53d14e63bbadb7210c8eec8586f01e0] Рефакторинг: обработчики кликов вынесены в отдельную функцию
+[exit 0]
+
+$ git bisect log
+# bad: [381b284f6efa3b302d3a5e8cbba5f09ae569784d] Обновить README
+# good: [06e32ba04b2bfb69bdf3d258b41a380cf75946fd] Адаптивная сетка
+git bisect start '381b284' '06e32ba'
+[exit 0]
+
+$ git bisect reset
+Previous HEAD position was 30e1688 Рефакторинг: обработчики кликов вынесены в отдельную функцию
+Switched to branch 'master'
+[exit 0]
+
+
+===== Д18. git grep -h / git blame -h — полный список настоящих опций (проверка на пропуски в area-классификации)
+# Прогон 26.09.2026, git version 2.53.0 (та же версия, что и остальной отчёт), LC_ALL=C,
+# GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, репозиторий в mktemp -d с одним коммитом
+# (для этого прогона важен только текст usage, а не данные репозитория).
+$ git grep -h
+usage: git grep [<options>] [-e] <pattern> [<rev>...] [[--] <path>...]
+
+    --[no-]cached         search in index instead of in the work tree
+    --no-index            find in contents not managed by git
+    --index               opposite of --no-index
+    --[no-]untracked      search in both tracked and untracked files
+    --[no-]exclude-standard
+                          ignore files specified via '.gitignore'
+    --[no-]recurse-submodules
+                          recursively search in each submodule
+
+    -v, --[no-]invert-match
+                          show non-matching lines
+    -i, --[no-]ignore-case
+                          case insensitive matching
+    -w, --[no-]word-regexp
+                          match patterns only at word boundaries
+    -a, --[no-]text       process binary files as text
+    -I                    don't match patterns in binary files
+    --[no-]textconv       process binary files with textconv filters
+    -r, --[no-]recursive  search in subdirectories (default)
+    --max-depth <n>       descend at most <n> levels
+
+    -E, --[no-]extended-regexp
+                          use extended POSIX regular expressions
+    -G, --[no-]basic-regexp
+                          use basic POSIX regular expressions (default)
+    -F, --[no-]fixed-strings
+                          interpret patterns as fixed strings
+    -P, --[no-]perl-regexp
+                          use Perl-compatible regular expressions
+
+    -n, --[no-]line-number
+                          show line numbers
+    --[no-]column         show column number of first match
+    -h                    don't show filenames
+    -H                    show filenames
+    --[no-]full-name      show filenames relative to top directory
+    -l, --[no-]files-with-matches
+                          show only filenames instead of matching lines
+    --[no-]name-only      synonym for --files-with-matches
+    -L, --[no-]files-without-match
+                          show only the names of files without match
+    -z, --[no-]null       print NUL after filenames
+    -o, --[no-]only-matching
+                          show only matching parts of a line
+    -c, --[no-]count      show the number of matches instead of matching lines
+    --[no-]color[=<when>] highlight matches
+    --[no-]break          print empty line between matches from different files
+    --[no-]heading        show filename only once above matches from same file
+
+    -C, --[no-]context <n>
+                          show <n> context lines before and after matches
+    -B, --before-context <n>
+                          show <n> context lines before matches
+    -A, --after-context <n>
+                          show <n> context lines after matches
+    --[no-]threads <n>    use <n> worker threads
+    -NUM                  shortcut for -C NUM
+    -p, --[no-]show-function
+                          show a line with the function name before matches
+    -W, --[no-]function-context
+                          show the surrounding function
+
+    -f <file>             read patterns from file
+    -e <pattern>          match <pattern>
+    --and                 combine patterns specified with -e
+    --or
+    --not
+    (
+    )
+    -q, --[no-]quiet      indicate hit with exit status without output
+    --[no-]all-match      show only matches from files that match all patterns
+
+    -O, --[no-]open-files-in-pager[=<pager>]
+                          show matching files in the pager
+    --[no-]ext-grep       allow calling of grep(1) (ignored by this build)
+    -m, --[no-]max-count <n>
+                          maximum number of results per file
+
+[exit 129]
+
+$ git blame -h
+usage: git blame [<options>] [<rev-opts>] [<rev>] [--] <file>
+
+    <rev-opts> are documented in git-rev-list(1)
+
+    --[no-]incremental    show blame entries as we find them, incrementally
+    -b                    do not show object names of boundary commits (Default: off)
+    --[no-]root           do not treat root commits as boundaries (Default: off)
+    --[no-]show-stats     show work cost statistics
+    --[no-]progress       force progress reporting
+    --[no-]score-debug    show output score for blame entries
+    -f, --[no-]show-name  show original filename (Default: auto)
+    -n, --[no-]show-number
+                          show original linenumber (Default: off)
+    -p, --[no-]porcelain  show in a format designed for machine consumption
+    --[no-]line-porcelain show porcelain format with per-line commit information
+    -c                    use the same output mode as git-annotate (Default: off)
+    -t                    show raw timestamp (Default: off)
+    -l                    show long commit SHA1 (Default: off)
+    -s                    suppress author name and timestamp (Default: off)
+    -e, --[no-]show-email show author email instead of name (Default: off)
+    -w                    ignore whitespace differences
+    --diff-algorithm <algorithm>
+                          choose a diff algorithm
+    --[no-]ignore-rev <rev>
+                          ignore <rev> when blaming
+    --[no-]ignore-revs-file <file>
+                          ignore revisions from <file>
+    --[no-]color-lines    color redundant metadata from previous line differently
+    --[no-]color-by-age   color lines by age
+    -S <file>             use revisions from <file> instead of calling git-rev-list
+    --[no-]contents <file>
+                          use <file>'s contents as the final image
+    -C[<score>]           find line copies within and across files
+    -M[<score>]           find line movements within and across files
+    -L <range>            process only line range <start>,<end> or function :<funcname>
+    --[no-]abbrev[=<n>]   use <n> digits to display object names
+
+[exit 129]
+
+# Вывод обеих команд байт-в-байт совпадает с usage-блоками, уже записанными выше (GREP/BLAME) —
+# в них нет пропусков относительно `-h`. Полный список токенов для area-классификации (searchScope.ts,
+# GREP_KNOWN_OUT_OF_SCOPE/BLAME_KNOWN_OUT_OF_SCOPE) построен по этому выводу.

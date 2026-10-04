@@ -1,0 +1,1979 @@
+# Прогоны git 2.53.0, 26.09.2026, LC_ALL=C, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_PAGER=cat.
+# Каталог прогона в выводе заменён на /work. Автор и коммиттер: Валера <valera@example.com>.
+# Даты: каждая команда сдвигает часы на минуту, начиная с Mon Jun 1 10:00:00 2026 +0300, через GIT_AUTHOR_DATE/GIT_COMMITTER_DATE —
+#   поэтому хэши воспроизводимы в пределах этого файла, но от порядка команд зависят. С хэшами source.html не совпадают.
+# Исходная история — как seed раздела 8 в source.html (app.js, feature: fix + about, master: README).
+# log.decorate=short задан через GIT_CONFIG_PARAMETERS: вывод здесь не на терминал, а при log.decorate=auto (по умолчанию)
+#   git печатает подписи (HEAD -> master, tag: …) только на терминал. Так вывод совпадает с тем, что человек видит в терминале.
+#   Отдельный блок в конце показывает разницу auto/short.
+# <CR> — символ возврата каретки (\r) в выводе git. rebase печатает прогресс «Rebasing (1/2)<CR>», на терминале
+#   следующая строка затирает его, и человек видит только последнюю строку («Successfully rebased …»).
+# Формат: "$ команда", вывод (stdout+stderr), [exit код].
+
+===== П8.1. ИСХОДНОЕ СОСТОЯНИЕ
+$ git log --oneline
+07a2e08 (HEAD -> master) Добавить README
+4523efd Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all
+07a2e08 (HEAD -> master) Добавить README
+13d43ea (feature) Добавить страницу «О проекте»
+3bfa2d4 fix: опечатка в логе
+4523efd Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all --graph
+* 07a2e08 (HEAD -> master) Добавить README
+| * 13d43ea (feature) Добавить страницу «О проекте»
+| * 3bfa2d4 fix: опечатка в логе
+|/  
+* 4523efd Базовая версия приложения
+[exit 0]
+
+$ git log --oneline feature
+13d43ea (feature) Добавить страницу «О проекте»
+3bfa2d4 fix: опечатка в логе
+4523efd Базовая версия приложения
+[exit 0]
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log
+commit 07a2e0849f3a2763c23a78480f717a152e227226 (HEAD -> master)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:04:00 2026 +0300
+
+    Добавить README
+
+commit 4523efd156b46675bef3885a5976e96f49cc35f1
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:01:00 2026 +0300
+
+    Базовая версия приложения
+[exit 0]
+
+$ git reflog
+07a2e08 (HEAD -> master) HEAD@{0}: commit: Добавить README
+4523efd HEAD@{1}: checkout: moving from feature to master
+13d43ea (feature) HEAD@{2}: commit: Добавить страницу «О проекте»
+3bfa2d4 HEAD@{3}: commit: fix: опечатка в логе
+4523efd HEAD@{4}: checkout: moving from master to feature
+4523efd HEAD@{5}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== П8.2. ТЕГИ
+$ git tag
+[exit 0]
+
+$ git tag v1.0.0
+[exit 0]
+
+$ git tag v1.0.0
+fatal: tag 'v1.0.0' already exists
+[exit 128]
+
+$ git tag -a v1.1.0 -m "Релиз"
+[exit 0]
+
+$ git tag -am "Кандидат" v1.2.0-rc
+[exit 0]
+
+$ git tag -m "Только сообщение" v1.3.0
+[exit 0]
+
+$ git tag --annotate v1.4.0 --message "Длинные флаги"
+[exit 0]
+
+$ GIT_EDITOR=false git tag -a v1.5.0
+error: there was a problem with the editor 'false'
+Please supply the message using either -m or -F option.
+[exit 1]
+
+$ GIT_EDITOR=true git tag -a v1.5.0
+fatal: no tag message?
+[exit 128]
+
+$ git tag -m
+error: switch `m' requires a value
+[exit 129]
+
+$ git tag
+v1.0.0
+v1.1.0
+v1.2.0-rc
+v1.3.0
+v1.4.0
+[exit 0]
+
+$ git tag -l "v1.*"
+v1.0.0
+v1.1.0
+v1.2.0-rc
+v1.3.0
+v1.4.0
+[exit 0]
+
+$ git tag -l v1.1*
+v1.1.0
+[exit 0]
+
+$ git tag -l nosuch*
+[exit 0]
+
+$ git tag --list
+v1.0.0
+v1.1.0
+v1.2.0-rc
+v1.3.0
+v1.4.0
+[exit 0]
+
+$ git tag -n
+v1.0.0          Добавить README
+v1.1.0          Релиз
+v1.2.0-rc       Кандидат
+v1.3.0          Только сообщение
+v1.4.0          Длинные флаги
+[exit 0]
+
+$ git cat-file -t v1.0.0; git cat-file -t v1.1.0
+commit
+tag
+[exit 0]
+
+$ git cat-file tag v1.1.0
+object 07a2e0849f3a2763c23a78480f717a152e227226
+type commit
+tag v1.1.0
+tagger Валера <valera@example.com> 1780298100 +0300
+
+Релиз
+[exit 0]
+
+$ git show v1.1.0
+tag v1.1.0
+Tagger: Валера <valera@example.com>
+Date:   Mon Jun 1 10:15:00 2026 +0300
+
+Релиз
+
+commit 07a2e0849f3a2763c23a78480f717a152e227226 (HEAD -> master, tag: v1.4.0, tag: v1.3.0, tag: v1.2.0-rc, tag: v1.1.0, tag: v1.0.0)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:04:00 2026 +0300
+
+    Добавить README
+
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..aa4d065
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1 @@
++# Мини-сайт
+\ No newline at end of file
+[exit 0]
+
+$ git show v1.0.0
+commit 07a2e0849f3a2763c23a78480f717a152e227226 (HEAD -> master, tag: v1.4.0, tag: v1.3.0, tag: v1.2.0-rc, tag: v1.1.0, tag: v1.0.0)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:04:00 2026 +0300
+
+    Добавить README
+
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..aa4d065
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1 @@
++# Мини-сайт
+\ No newline at end of file
+[exit 0]
+
+$ git show v1.1.0 --stat
+tag v1.1.0
+Tagger: Валера <valera@example.com>
+Date:   Mon Jun 1 10:15:00 2026 +0300
+
+Релиз
+
+commit 07a2e0849f3a2763c23a78480f717a152e227226 (HEAD -> master, tag: v1.4.0, tag: v1.3.0, tag: v1.2.0-rc, tag: v1.1.0, tag: v1.0.0)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:04:00 2026 +0300
+
+    Добавить README
+
+ README.md | 1 +
+ 1 file changed, 1 insertion(+)
+[exit 0]
+
+$ git log --oneline
+07a2e08 (HEAD -> master, tag: v1.4.0, tag: v1.3.0, tag: v1.2.0-rc, tag: v1.1.0, tag: v1.0.0) Добавить README
+4523efd Базовая версия приложения
+[exit 0]
+
+$ git log -1
+commit 07a2e0849f3a2763c23a78480f717a152e227226 (HEAD -> master, tag: v1.4.0, tag: v1.3.0, tag: v1.2.0-rc, tag: v1.1.0, tag: v1.0.0)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:04:00 2026 +0300
+
+    Добавить README
+[exit 0]
+
+$ git log --oneline --all
+07a2e08 (HEAD -> master, tag: v1.4.0, tag: v1.3.0, tag: v1.2.0-rc, tag: v1.1.0, tag: v1.0.0) Добавить README
+13d43ea (feature) Добавить страницу «О проекте»
+3bfa2d4 fix: опечатка в логе
+4523efd Базовая версия приложения
+[exit 0]
+
+$ git tag -f v1.0.0 HEAD~0
+[exit 0]
+
+$ git tag -f v1.0.0 HEAD~1
+Updated tag 'v1.0.0' (was 07a2e08)
+[exit 0]
+
+$ git tag -f v1.0.0 HEAD~1
+[exit 0]
+
+$ git tag -f v1.1.0 HEAD~1
+Updated tag 'v1.1.0' (was 35d3821)
+[exit 0]
+
+$ git tag -d v1.0.0
+Deleted tag 'v1.0.0' (was 4523efd)
+[exit 0]
+
+$ git tag -d v1.0.0
+error: tag 'v1.0.0' not found.
+[exit 1]
+
+$ git tag -d
+[exit 0]
+
+$ git tag -d v1.2.0-rc v1.3.0
+Deleted tag 'v1.2.0-rc' (was 4300d7b)
+Deleted tag 'v1.3.0' (was 60b023c)
+[exit 0]
+
+$ git tag -d nosuch v1.4.0
+error: tag 'nosuch' not found.
+Deleted tag 'v1.4.0' (was fb04855)
+[exit 1]
+
+$ git tag "a b"
+fatal: 'a b' is not a valid tag name.
+[exit 128]
+
+$ git tag v1..2
+fatal: 'v1..2' is not a valid tag name.
+[exit 128]
+
+$ git tag x~1
+fatal: 'x~1' is not a valid tag name.
+[exit 128]
+
+$ git tag -- -x
+fatal: '-x' is not a valid tag name.
+[exit 128]
+
+$ git tag v1.lock
+fatal: 'v1.lock' is not a valid tag name.
+[exit 128]
+
+$ git tag v9 nosuch
+fatal: Failed to resolve 'nosuch' as a valid ref.
+[exit 128]
+
+$ git tag v1.0.0 HEAD~1
+[exit 0]
+
+$ git tag a b c
+fatal: too many arguments
+[exit 128]
+
+$ git tag -z
+error: unknown switch `z'
+usage: git tag [-a | -s | -u <key-id>] [-f] [-m <msg> | -F <file>] [-e]
+               [(--trailer <token>[(=|:)<value>])...]
+               <tagname> [<commit> | <object>]
+   or: git tag -d <tagname>...
+   or: git tag [-n[<num>]] -l [--contains <commit>] [--no-contains <commit>]
+               [--points-at <object>] [--column[=<options>] | --no-column]
+               [--create-reflog] [--sort=<key>] [--format=<format>]
+               [--merged <commit>] [--no-merged <commit>] [<pattern>...]
+   or: git tag -v [--format=<format>] <tagname>...
+
+    -l, --list            list tag names
+    -n[<n>]               print <n> lines of each tag message
+    -d, --delete          delete tags
+    -v, --verify          verify tags
+
+Tag creation options
+    -a, --[no-]annotate   annotated tag, needs a message
+    -m, --message <message>
+                          tag message
+    -F, --[no-]file <file>
+                          read message from file
+    --trailer <trailer>   add custom trailer(s)
+    -e, --[no-]edit       force edit of tag message
+    -s, --[no-]sign       annotated and GPG-signed tag
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    -u, --[no-]local-user <key-id>
+                          use another key to sign the tag
+    -f, --[no-]force      replace the tag if exists
+    --[no-]create-reflog  create a reflog
+
+Tag listing options
+    --[no-]column[=<style>]
+                          show tag list in columns
+    --contains <commit>   print only tags that contain the commit
+    --no-contains <commit>
+                          print only tags that don't contain the commit
+    --merged <commit>     print only tags that are merged
+    --no-merged <commit>  print only tags that are not merged
+    --[no-]omit-empty     do not output a newline after empty formatted refs
+    --[no-]sort <key>     field name to sort on
+    --[no-]points-at <object>
+                          print only tags of the object
+    --[no-]format <format>
+                          format to use for the output
+    --[no-]color[=<when>] respect format colors
+    -i, --[no-]ignore-case
+                          sorting and filtering are case insensitive
+
+[exit 129]
+
+$ git tag --nosuch
+error: unknown option `nosuch'
+usage: git tag [-a | -s | -u <key-id>] [-f] [-m <msg> | -F <file>] [-e]
+               [(--trailer <token>[(=|:)<value>])...]
+               <tagname> [<commit> | <object>]
+   or: git tag -d <tagname>...
+   or: git tag [-n[<num>]] -l [--contains <commit>] [--no-contains <commit>]
+               [--points-at <object>] [--column[=<options>] | --no-column]
+               [--create-reflog] [--sort=<key>] [--format=<format>]
+               [--merged <commit>] [--no-merged <commit>] [<pattern>...]
+   or: git tag -v [--format=<format>] <tagname>...
+
+    -l, --list            list tag names
+    -n[<n>]               print <n> lines of each tag message
+    -d, --delete          delete tags
+    -v, --verify          verify tags
+
+Tag creation options
+    -a, --[no-]annotate   annotated tag, needs a message
+    -m, --message <message>
+                          tag message
+    -F, --[no-]file <file>
+                          read message from file
+    --trailer <trailer>   add custom trailer(s)
+    -e, --[no-]edit       force edit of tag message
+    -s, --[no-]sign       annotated and GPG-signed tag
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    -u, --[no-]local-user <key-id>
+                          use another key to sign the tag
+    -f, --[no-]force      replace the tag if exists
+    --[no-]create-reflog  create a reflog
+
+Tag listing options
+    --[no-]column[=<style>]
+                          show tag list in columns
+    --contains <commit>   print only tags that contain the commit
+    --no-contains <commit>
+                          print only tags that don't contain the commit
+    --merged <commit>     print only tags that are merged
+    --no-merged <commit>  print only tags that are not merged
+    --[no-]omit-empty     do not output a newline after empty formatted refs
+    --[no-]sort <key>     field name to sort on
+    --[no-]points-at <object>
+                          print only tags of the object
+    --[no-]format <format>
+                          format to use for the output
+    --[no-]color[=<when>] respect format colors
+    -i, --[no-]ignore-case
+                          sorting and filtering are case insensitive
+
+[exit 129]
+
+$ git log --oneline --all
+07a2e08 (HEAD -> master) Добавить README
+13d43ea (feature) Добавить страницу «О проекте»
+3bfa2d4 fix: опечатка в логе
+4523efd (tag: v1.1.0, tag: v1.0.0) Базовая версия приложения
+[exit 0]
+
+$ git checkout v1.1.0
+Note: switching to 'v1.1.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 4523efd Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at v1.1.0
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline
+4523efd (HEAD, tag: v1.1.0, tag: v1.0.0) Базовая версия приложения
+[exit 0]
+
+$ git log -1
+commit 4523efd156b46675bef3885a5976e96f49cc35f1 (HEAD, tag: v1.1.0, tag: v1.0.0)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 10:01:00 2026 +0300
+
+    Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all
+07a2e08 (master) Добавить README
+13d43ea (feature) Добавить страницу «О проекте»
+3bfa2d4 fix: опечатка в логе
+4523efd (HEAD, tag: v1.1.0, tag: v1.0.0) Базовая версия приложения
+[exit 0]
+
+$ git tag v-detached
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was 4523efd Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git tag master
+[exit 0]
+
+$ git log --oneline -1
+07a2e08 (HEAD -> master, tag: master) Добавить README
+[exit 0]
+
+$ git checkout master
+warning: refname 'master' is ambiguous.
+Already on 'master'
+[exit 0]
+
+$ git tag -d master
+Deleted tag 'master' (was 07a2e08)
+[exit 0]
+
+$ git tag v2 feature
+[exit 0]
+
+$ git log --oneline --all
+07a2e08 (HEAD -> master) Добавить README
+13d43ea (tag: v2, feature) Добавить страницу «О проекте»
+3bfa2d4 fix: опечатка в логе
+4523efd (tag: v1.1.0, tag: v1.0.0, tag: v-detached) Базовая версия приложения
+[exit 0]
+
+$ git push
+fatal: No configured push destination.
+Either specify the URL from the command-line or configure a remote repository using
+
+    git remote add <name> <url>
+
+and then push using the remote name
+
+    git push <name>
+
+[exit 128]
+
+===== П8.3. STASH
+$ git stash
+No local changes to save
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+$ edit; git status --short
+ M app.js
+[exit 0]
+
+$ git stash
+Saved working directory and index state WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git status --short; cat app.js
+console.log("v1");[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ edit; git stash -m "вторая правка"
+Saved working directory and index state On master: вторая правка
+[exit 0]
+
+$ git stash list
+stash@{0}: On master: вторая правка
+stash@{1}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash apply
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git stash list
+stash@{0}: On master: вторая правка
+stash@{1}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash apply
+error: Your local changes to the following files would be overwritten by merge:
+	app.js
+Please commit your changes or stash them before you merge.
+Aborting
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 1]
+
+$ git stash list
+stash@{0}: On master: вторая правка
+stash@{1}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git checkout -- app.js && git status --short
+[exit 0]
+
+$ git stash drop stash@{1}
+Dropped stash@{1} (b4eaacf04c422f81a88a6c06ef59cfe6f9826b7c)
+[exit 0]
+
+$ git stash list
+stash@{0}: On master: вторая правка
+[exit 0]
+
+$ git stash drop stash@{5}
+fatal: log for 'stash' only has 1 entries
+[exit 128]
+
+$ git stash pop stash@x
+error: stash@x is not a valid reference
+[exit 1]
+
+$ git stash pop 0
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (c1979d653bd0faad722f6b08cc1b0dbba85a00ac)
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+$ git stash pop
+No stash entries found.
+[exit 1]
+
+$ git stash pop
+No stash entries found.
+[exit 1]
+
+$ git stash drop
+No stash entries found.
+[exit 1]
+
+$ git stash apply
+No stash entries found.
+[exit 1]
+
+$ edit; git stash; git stash list
+Saved working directory and index state WIP on master: 9e73ccb Добавить README
+stash@{0}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash clear
+[exit 0]
+
+$ git stash list
+[exit 0]
+
+$ echo new > untracked.txt; git stash
+No local changes to save
+[exit 0]
+
+$ git stash -u
+Saved working directory and index state WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash list; ls
+stash@{0}: WIP on master: 9e73ccb Добавить README
+README.md
+app.js
+[exit 0]
+
+$ git stash pop
+Already up to date.
+On branch master
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	untracked.txt
+
+nothing added to commit but untracked files present (use "git add" to track)
+Dropped refs/stash@{0} (a48f552b253bb07e496c3ae479fb31955cafd03a)
+[exit 0]
+
+$ rm untracked.txt; edit; git stash push -m msg
+Saved working directory and index state On master: msg
+[exit 0]
+
+$ edit; git stash save "старый стиль"
+Saved working directory and index state On master: старый стиль
+[exit 0]
+
+$ git stash list
+stash@{0}: On master: старый стиль
+stash@{1}: On master: msg
+[exit 0]
+
+$ git stash pop
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (e5f0ae370f453ef459beed98c2d8986a9af3dc97)
+[exit 0]
+
+$ git stash pop
+error: Your local changes to the following files would be overwritten by merge:
+	app.js
+Please commit your changes or stash them before you merge.
+Aborting
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git checkout -- app.js
+[exit 0]
+
+$ edit; git stash
+Saved working directory and index state WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ printf "console.log(\"v1\"); // вторая версия" > app.js; git stash -m "вторая версия"
+Saved working directory and index state On master: вторая версия
+[exit 0]
+
+$ git stash list
+stash@{0}: On master: вторая версия
+stash@{1}: WIP on master: 9e73ccb Добавить README
+stash@{2}: On master: msg
+[exit 0]
+
+$ git stash pop
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (37a5c0c8a7c6e9e0652c43ae268cbc4976618af2)
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 9e73ccb Добавить README
+stash@{1}: On master: msg
+[exit 0]
+
+$ git status --short; cat app.js
+ M app.js
+console.log("v1"); // вторая версия[exit 0]
+
+$ git stash pop
+error: Your local changes to the following files would be overwritten by merge:
+	app.js
+Please commit your changes or stash them before you merge.
+Aborting
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git stash list
+stash@{0}: WIP on master: 9e73ccb Добавить README
+stash@{1}: On master: msg
+[exit 0]
+
+$ git checkout -- app.js; git stash clear; edit; git add app.js; git stash
+Saved working directory and index state WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash list; git status --short
+stash@{0}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash pop
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (ef60d3ab516b2e10b3ac4d07264282c8c62ba89e)
+[exit 0]
+
+$ git status --short
+ M app.js
+[exit 0]
+
+$ git stash pop --index 2>&1; git reset -q; git checkout -- app.js; edit; git add app.js; git stash -q; git stash pop --index; git status --short
+No stash entries found.
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   app.js
+
+Dropped refs/stash@{0} (76cdc710d7df561497351f69ceeb2d1b7690c3c6)
+M  app.js
+[exit 0]
+
+$ git reset -q; git checkout -- app.js; git stash clear; edit; git stash -q; git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash pop
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+On branch feature
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+[exit 1]
+
+$ git status --short; cat app.js
+UU app.js
+<<<<<<< Updated upstream
+console.log("v1"); // исправлена опечатка в логе
+=======
+console.log("v1"); // локальная правка, ещё не готова коммититься
+>>>>>>> Stashed changes
+[exit 0]
+
+$ git checkout -- app.js
+error: path 'app.js' is unmerged
+[exit 1]
+
+$ git reset -q --hard; git checkout master; git stash list
+Switched to branch 'master'
+stash@{0}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash show
+ app.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git stash show -p
+diff --git a/app.js b/app.js
+index 1160341..f066191 100644
+--- a/app.js
++++ b/app.js
+@@ -1 +1 @@
+-console.log("v1");
+\ No newline at end of file
++console.log("v1"); // локальная правка, ещё не готова коммититься
+\ No newline at end of file
+[exit 0]
+
+$ git stash show stash@{0}
+ app.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ edit; git stash -k
+Saved working directory and index state WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on master: 9e73ccb Добавить README
+stash@{1}: WIP on master: 9e73ccb Добавить README
+[exit 0]
+
+$ git stash branch x
+Switched to a new branch 'x'
+On branch x
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (7a688775358a66707ecf78d763178d02ea94f9b6)
+[exit 0]
+
+$ git stash list; git status --short; git branch
+stash@{0}: WIP on master: 9e73ccb Добавить README
+ M app.js
+  feature
+  master
+* x
+[exit 0]
+
+===== П8.4. LOG --ALL, CHERRY-PICK
+$ git log --oneline
+5d56e08 (HEAD -> master) Добавить README
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all
+5d56e08 (HEAD -> master) Добавить README
+81e58dd (feature) Добавить страницу «О проекте»
+f4e9c2f fix: опечатка в логе
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline feature
+81e58dd (feature) Добавить страницу «О проекте»
+f4e9c2f fix: опечатка в логе
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ edit; git cherry-pick $(git rev-parse feature~1)
+error: Your local changes to the following files would be overwritten by merge:
+	app.js
+Please commit your changes or stash them before you merge.
+Aborting
+fatal: cherry-pick failed
+[exit 128]
+
+$ git status --short
+ M app.js
+[exit 0]
+
+$ git checkout -- app.js; git cherry-pick $(git rev-parse --short feature~1)
+[master fbaf825] fix: опечатка в логе
+ Date: Mon Jun 1 12:17:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git log --oneline --all --graph
+* fbaf825 (HEAD -> master) fix: опечатка в логе
+* 5d56e08 Добавить README
+| * 81e58dd (feature) Добавить страницу «О проекте»
+| * f4e9c2f fix: опечатка в логе
+|/  
+* 3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git cherry-pick
+usage: git cherry-pick [--edit] [-n] [-m <parent-number>] [-s] [-x] [--ff]
+                       [-S[<keyid>]] <commit>...
+   or: git cherry-pick (--continue | --skip | --abort | --quit)
+
+    --quit                end revert or cherry-pick sequence
+    --continue            resume revert or cherry-pick sequence
+    --abort               cancel revert or cherry-pick sequence
+    --skip                skip current commit and continue
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    -n, --no-commit       don't automatically commit
+    --commit              opposite of --no-commit
+    -e, --[no-]edit       edit the commit message
+    -s, --[no-]signoff    add a Signed-off-by trailer
+    -m, --[no-]mainline <parent-number>
+                          select mainline parent
+    --[no-]rerere-autoupdate
+                          update the index with reused conflict resolution if possible
+    --[no-]strategy <strategy>
+                          merge strategy
+    -X, --[no-]strategy-option <option>
+                          option for merge strategy
+    -S, --[no-]gpg-sign[=<key-id>]
+                          GPG sign commit
+    -x                    append commit name
+    --[no-]ff             allow fast-forward
+    --[no-]allow-empty    preserve initially empty commits
+    --[no-]allow-empty-message
+                          allow commits with empty messages
+    --[no-]keep-redundant-commits
+                          deprecated: use --empty=keep instead
+    --empty (stop|drop|keep)
+                          how to handle commits that become empty
+
+[exit 129]
+
+$ git cherry-pick nosuch
+fatal: bad revision 'nosuch'
+[exit 128]
+
+$ git cherry-pick $(git rev-parse --short feature~1)
+The previous cherry-pick is now empty, possibly due to conflict resolution.
+If you wish to commit it anyway, use:
+
+    git commit --allow-empty
+
+Otherwise, please use 'git cherry-pick --skip'
+On branch master
+You are currently cherry-picking commit f4e9c2f.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+nothing to commit, working tree clean
+[exit 1]
+
+$ git status
+On branch master
+You are currently cherry-picking commit f4e9c2f.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+nothing to commit, working tree clean
+[exit 0]
+
+$ git cherry-pick --abort 2>&1; git reset -q --hard; git status --short
+[exit 0]
+
+===== П8.5. RESET --HARD И REFLOG
+$ git reset --hard HEAD~1
+HEAD is now at 5d56e08 Добавить README
+[exit 0]
+
+$ git log --oneline
+5d56e08 (HEAD -> master) Добавить README
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all
+5d56e08 (HEAD -> master) Добавить README
+81e58dd (feature) Добавить страницу «О проекте»
+f4e9c2f fix: опечатка в логе
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git reflog
+5d56e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD~1
+fbaf825 HEAD@{1}: reset: moving to HEAD
+fbaf825 HEAD@{2}: reset: moving to fbaf8255236f68fda3efc2002b58a5f1358c3c27
+fbaf825 HEAD@{3}: cherry-pick: fix: опечатка в логе
+5d56e08 (HEAD -> master) HEAD@{4}: commit: Добавить README
+3f216e0 HEAD@{5}: checkout: moving from feature to master
+81e58dd (feature) HEAD@{6}: commit: Добавить страницу «О проекте»
+f4e9c2f HEAD@{7}: commit: fix: опечатка в логе
+3f216e0 HEAD@{8}: checkout: moving from master to feature
+3f216e0 HEAD@{9}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reset --hard HEAD~1
+HEAD is now at 3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git reflog
+3f216e0 (HEAD -> master) HEAD@{0}: reset: moving to HEAD~1
+5d56e08 HEAD@{1}: reset: moving to HEAD~1
+fbaf825 HEAD@{2}: reset: moving to HEAD
+fbaf825 HEAD@{3}: reset: moving to fbaf8255236f68fda3efc2002b58a5f1358c3c27
+fbaf825 HEAD@{4}: cherry-pick: fix: опечатка в логе
+5d56e08 HEAD@{5}: commit: Добавить README
+3f216e0 (HEAD -> master) HEAD@{6}: checkout: moving from feature to master
+81e58dd (feature) HEAD@{7}: commit: Добавить страницу «О проекте»
+f4e9c2f HEAD@{8}: commit: fix: опечатка в логе
+3f216e0 (HEAD -> master) HEAD@{9}: checkout: moving from master to feature
+3f216e0 (HEAD -> master) HEAD@{10}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reset --hard HEAD@{1}
+HEAD is now at 5d56e08 Добавить README
+[exit 0]
+
+$ git log --oneline
+5d56e08 (HEAD -> master) Добавить README
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git reflog
+5d56e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD@{1}
+3f216e0 HEAD@{1}: reset: moving to HEAD~1
+5d56e08 (HEAD -> master) HEAD@{2}: reset: moving to HEAD~1
+fbaf825 HEAD@{3}: reset: moving to HEAD
+fbaf825 HEAD@{4}: reset: moving to fbaf8255236f68fda3efc2002b58a5f1358c3c27
+fbaf825 HEAD@{5}: cherry-pick: fix: опечатка в логе
+5d56e08 (HEAD -> master) HEAD@{6}: commit: Добавить README
+3f216e0 HEAD@{7}: checkout: moving from feature to master
+81e58dd (feature) HEAD@{8}: commit: Добавить страницу «О проекте»
+f4e9c2f HEAD@{9}: commit: fix: опечатка в логе
+3f216e0 HEAD@{10}: checkout: moving from master to feature
+3f216e0 HEAD@{11}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reset --hard HEAD@{2}
+HEAD is now at 5d56e08 Добавить README
+[exit 0]
+
+$ git log --oneline
+5d56e08 (HEAD -> master) Добавить README
+3f216e0 Базовая версия приложения
+[exit 0]
+
+$ git reflog -3
+5d56e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD@{2}
+5d56e08 (HEAD -> master) HEAD@{1}: reset: moving to HEAD@{1}
+3f216e0 HEAD@{2}: reset: moving to HEAD~1
+[exit 0]
+
+$ git reflog show feature
+81e58dd (feature) feature@{0}: commit: Добавить страницу «О проекте»
+f4e9c2f feature@{1}: commit: fix: опечатка в логе
+3f216e0 feature@{2}: branch: Created from master
+[exit 0]
+
+$ git reset --hard HEAD@{99}
+fatal: log for 'HEAD' only has 13 entries
+[exit 128]
+
+$ git log -g --oneline -3
+5d56e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD@{2}
+5d56e08 (HEAD -> master) HEAD@{1}: reset: moving to HEAD@{1}
+3f216e0 HEAD@{2}: reset: moving to HEAD~1
+[exit 0]
+
+===== П8.6. REBASE: простой перенос feature на master
+$ git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ git log --oneline --all --graph
+* 51c8e4c (master) Добавить README
+| * d315a1c (HEAD -> feature) Добавить страницу «О проекте»
+| * 653aff0 fix: опечатка в логе
+|/  
+* 0e5c098 Базовая версия приложения
+[exit 0]
+
+$ git rebase master
+Rebasing (1/2)<CR>Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline
+317bf5f (HEAD -> feature) Добавить страницу «О проекте»
+b14646f fix: опечатка в логе
+51c8e4c (master) Добавить README
+0e5c098 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all --graph
+* 317bf5f (HEAD -> feature) Добавить страницу «О проекте»
+* b14646f fix: опечатка в логе
+* 51c8e4c (master) Добавить README
+* 0e5c098 Базовая версия приложения
+[exit 0]
+
+$ ls
+README.md
+about.html
+app.js
+[exit 0]
+
+$ git reflog
+317bf5f (HEAD -> feature) HEAD@{0}: rebase (finish): returning to refs/heads/feature
+317bf5f (HEAD -> feature) HEAD@{1}: rebase (pick): Добавить страницу «О проекте»
+b14646f HEAD@{2}: rebase (pick): fix: опечатка в логе
+51c8e4c (master) HEAD@{3}: rebase (start): checkout master
+d315a1c HEAD@{4}: checkout: moving from master to feature
+51c8e4c (master) HEAD@{5}: commit: Добавить README
+0e5c098 HEAD@{6}: checkout: moving from feature to master
+d315a1c HEAD@{7}: commit: Добавить страницу «О проекте»
+653aff0 HEAD@{8}: commit: fix: опечатка в логе
+0e5c098 HEAD@{9}: checkout: moving from master to feature
+0e5c098 HEAD@{10}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git rebase master
+Current branch feature is up to date.
+[exit 0]
+
+$ git log --oneline
+317bf5f (HEAD -> feature) Добавить страницу «О проекте»
+b14646f fix: опечатка в логе
+51c8e4c (master) Добавить README
+0e5c098 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all
+317bf5f (HEAD -> feature) Добавить страницу «О проекте»
+b14646f fix: опечатка в логе
+51c8e4c (master) Добавить README
+0e5c098 Базовая версия приложения
+[exit 0]
+
+$ git rebase feature
+Current branch feature is up to date.
+[exit 0]
+
+$ git checkout master && git rebase feature
+Switched to branch 'master'
+Successfully rebased and updated refs/heads/master.
+[exit 0]
+
+$ git log --oneline
+317bf5f (HEAD -> master, feature) Добавить страницу «О проекте»
+b14646f fix: опечатка в логе
+51c8e4c Добавить README
+0e5c098 Базовая версия приложения
+[exit 0]
+
+===== П8.7. REBASE: master на feature (исходная история)
+$ git rebase feature
+Rebasing (1/1)<CR>Successfully rebased and updated refs/heads/master.
+[exit 0]
+
+$ git log --oneline
+7e15c74 (HEAD -> master) Добавить README
+df2050a (feature) Добавить страницу «О проекте»
+387baae fix: опечатка в логе
+0332516 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all --graph
+* 7e15c74 (HEAD -> master) Добавить README
+* df2050a (feature) Добавить страницу «О проекте»
+* 387baae fix: опечатка в логе
+* 0332516 Базовая версия приложения
+[exit 0]
+
+===== П8.8. REBASE: ветка без своих коммитов
+$ git branch topic master~1; git checkout topic
+Switched to branch 'topic'
+[exit 0]
+
+$ git log --oneline
+1050f41 (HEAD -> topic) Базовая версия приложения
+[exit 0]
+
+$ git rebase master
+Successfully rebased and updated refs/heads/topic.
+[exit 0]
+
+$ git log --oneline
+4a53802 (HEAD -> topic, master) Добавить README
+1050f41 Базовая версия приложения
+[exit 0]
+
+$ git checkout master; printf "# Мини-сайт\n\nREADME 2" > README.md; git commit -qam "README 2"; git checkout topic
+Switched to branch 'master'
+Switched to branch 'topic'
+[exit 0]
+
+$ git rebase master
+Successfully rebased and updated refs/heads/topic.
+[exit 0]
+
+$ git log --oneline
+705ba71 (HEAD -> topic, master) README 2
+4a53802 Добавить README
+1050f41 Базовая версия приложения
+[exit 0]
+
+===== П8.9. REBASE: после cherry-pick фикса в master
+$ git cherry-pick feature~1
+[master 6c36c0a] fix: опечатка в логе
+ Date: Mon Jun 1 13:23:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ git rebase master
+warning: skipped previously applied commit 82ef56b
+hint: use --reapply-cherry-picks to include skipped commits
+hint: Disable this message with "git config set advice.skippedCherryPicks false"
+Rebasing (1/1)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline
+551c7c6 (HEAD -> feature) Добавить страницу «О проекте»
+6c36c0a (master) fix: опечатка в логе
+095aa6e Добавить README
+9efd9e1 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all --graph
+* 551c7c6 (HEAD -> feature) Добавить страницу «О проекте»
+* 6c36c0a (master) fix: опечатка в логе
+* 095aa6e Добавить README
+* 9efd9e1 Базовая версия приложения
+[exit 0]
+
+$ git reflog -6
+551c7c6 (HEAD -> feature) HEAD@{0}: rebase (finish): returning to refs/heads/feature
+551c7c6 (HEAD -> feature) HEAD@{1}: rebase (pick): Добавить страницу «О проекте»
+6c36c0a (master) HEAD@{2}: rebase (start): checkout master
+9cc2a91 HEAD@{3}: checkout: moving from master to feature
+6c36c0a (master) HEAD@{4}: cherry-pick: fix: опечатка в логе
+095aa6e HEAD@{5}: commit: Добавить README
+[exit 0]
+
+===== П8.10. REBASE: миссионный путь (stash pop оставил правку, cherry-pick, reset/reflog, rebase)
+$ git tag v1.0.0
+[exit 0]
+
+$ git tag -a v1.1.0 -m "Релиз"
+[exit 0]
+
+$ git show v1.1.0 --no-patch
+tag v1.1.0
+Tagger: Валера <valera@example.com>
+Date:   Mon Jun 1 13:37:00 2026 +0300
+
+Релиз
+
+commit 94444309b9e32989df31642a0e99c6ec5d73bb1c (HEAD -> master, tag: v1.1.0, tag: v1.0.0)
+Author: Валера <valera@example.com>
+Date:   Mon Jun 1 13:35:00 2026 +0300
+
+    Добавить README
+[exit 0]
+
+$ edit; git stash
+Saved working directory and index state WIP on master: 9444430 Добавить README
+[exit 0]
+
+$ git stash pop
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (f217a40d3a7824bb2d1a032112bad594ff6fa2ca)
+[exit 0]
+
+$ git log --oneline feature
+206585e (feature) Добавить страницу «О проекте»
+4865596 fix: опечатка в логе
+502d4d2 Базовая версия приложения
+[exit 0]
+
+$ git cherry-pick $(git rev-parse --short feature~1)
+error: Your local changes to the following files would be overwritten by merge:
+	app.js
+Please commit your changes or stash them before you merge.
+Aborting
+fatal: cherry-pick failed
+[exit 128]
+
+$ git checkout -- app.js
+[exit 0]
+
+$ git cherry-pick $(git rev-parse --short feature~1)
+[master ab41d58] fix: опечатка в логе
+ Date: Mon Jun 1 13:33:00 2026 +0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git reset --hard HEAD~1
+HEAD is now at 9444430 Добавить README
+[exit 0]
+
+$ git reflog
+9444430 (HEAD -> master, tag: v1.1.0, tag: v1.0.0) HEAD@{0}: reset: moving to HEAD~1
+ab41d58 HEAD@{1}: cherry-pick: fix: опечатка в логе
+9444430 (HEAD -> master, tag: v1.1.0, tag: v1.0.0) HEAD@{2}: reset: moving to HEAD
+9444430 (HEAD -> master, tag: v1.1.0, tag: v1.0.0) HEAD@{3}: commit: Добавить README
+502d4d2 HEAD@{4}: checkout: moving from feature to master
+206585e (feature) HEAD@{5}: commit: Добавить страницу «О проекте»
+4865596 HEAD@{6}: commit: fix: опечатка в логе
+502d4d2 HEAD@{7}: checkout: moving from master to feature
+502d4d2 HEAD@{8}: commit (initial): Базовая версия приложения
+[exit 0]
+
+$ git reset --hard HEAD@{1}
+HEAD is now at ab41d58 fix: опечатка в логе
+[exit 0]
+
+$ git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ git rebase master
+warning: skipped previously applied commit 4865596
+hint: use --reapply-cherry-picks to include skipped commits
+hint: Disable this message with "git config set advice.skippedCherryPicks false"
+Rebasing (1/1)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline --all
+e282bce (HEAD -> feature) Добавить страницу «О проекте»
+ab41d58 (master) fix: опечатка в логе
+9444430 (tag: v1.1.0, tag: v1.0.0) Добавить README
+502d4d2 Базовая версия приложения
+[exit 0]
+
+$ git log --oneline --all --graph
+* e282bce (HEAD -> feature) Добавить страницу «О проекте»
+* ab41d58 (master) fix: опечатка в логе
+* 9444430 (tag: v1.1.0, tag: v1.0.0) Добавить README
+* 502d4d2 Базовая версия приложения
+[exit 0]
+
+===== П8.11. REBASE: конфликт
+$ printf "console.log(\"v2\");" > app.js; git commit -qam "master: v2"; git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ git rebase master
+Rebasing (1/2)<CR>Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+error: could not apply a48b638... fix: опечатка в логе
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply a48b638... # fix: опечатка в логе
+[exit 1]
+
+$ git status
+interactive rebase in progress; onto 2e13bdd
+Last command done (1 command done):
+   pick a48b638 # fix: опечатка в логе
+Next command to do (1 remaining command):
+   pick c290621 # Добавить страницу «О проекте»
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'feature' on '2e13bdd'.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[exit 0]
+
+$ git log --oneline --all --graph
+* 2e13bdd (HEAD, master) master: v2
+* d05aa44 Добавить README
+| * c290621 (feature) Добавить страницу «О проекте»
+| * a48b638 fix: опечатка в логе
+|/  
+* 6afc825 Базовая версия приложения
+[exit 0]
+
+$ git rebase --abort
+[exit 0]
+
+$ git status --short; git log --oneline
+c290621 (HEAD -> feature) Добавить страницу «О проекте»
+a48b638 fix: опечатка в логе
+6afc825 Базовая версия приложения
+[exit 0]
+
+$ git merge master
+Auto-merging app.js
+CONFLICT (content): Merge conflict in app.js
+Automatic merge failed; fix conflicts and then commit the result.
+[exit 1]
+
+$ git status --short
+A  README.md
+UU app.js
+[exit 0]
+
+$ git merge --abort; git status --short
+[exit 0]
+
+===== П8.12. REBASE: несохранённые правки, ошибки аргументов
+$ git checkout feature
+Switched to branch 'feature'
+[exit 0]
+
+$ edit; git rebase master
+error: cannot rebase: You have unstaged changes.
+error: Please commit or stash them.
+[exit 1]
+
+$ git add app.js; git rebase master
+error: cannot rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+[exit 1]
+
+$ git reset -q; git checkout -- app.js; git rebase nosuch
+fatal: invalid upstream 'nosuch'
+[exit 128]
+
+$ git rebase
+There is no tracking information for the current branch.
+Please specify which branch you want to rebase against.
+See git-rebase(1) for details.
+
+    git rebase '<branch>'
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=<remote>/<branch> feature
+
+[exit 1]
+
+$ git checkout --detach feature~1
+HEAD is now at 0fea8ce fix: опечатка в логе
+[exit 0]
+
+$ git rebase master
+Rebasing (1/1)<CR>Successfully rebased and updated detached HEAD.
+[exit 0]
+
+$ git status | head -3
+HEAD detached from 0fea8ce
+nothing to commit, working tree clean
+[exit 0]
+
+$ git log --oneline --all --graph
+* 2ef6650 (HEAD) fix: опечатка в логе
+* d0cbaa0 (master) Добавить README
+| * 59e3e6d (feature) Добавить страницу «О проекте»
+| * 0fea8ce fix: опечатка в логе
+|/  
+* e0631f3 Базовая версия приложения
+[exit 0]
+
+$ echo new > untracked.txt; git checkout -q feature; git rebase master
+Rebasing (1/2)<CR>Rebasing (2/2)<CR>Successfully rebased and updated refs/heads/feature.
+[exit 0]
+
+$ git log --oneline -2
+2f92a36 (HEAD -> feature) Добавить страницу «О проекте»
+c8ab3e8 fix: опечатка в логе
+[exit 0]
+
+$ git rebase master
+Current branch feature is up to date.
+[exit 0]
+
+===== П8.13. LOG: подписи на терминале и вне его
+$ git tag v1.0.0
+[exit 0]
+
+$ git -c log.decorate=auto log --oneline
+87eb4d3 Добавить README
+4eefa08 Базовая версия приложения
+[exit 0]
+
+$ git -c log.decorate=short log --oneline
+87eb4d3 (HEAD -> master, tag: v1.0.0) Добавить README
+4eefa08 Базовая версия приложения
+[exit 0]
+
+$ git -c log.decorate=full log --oneline -1
+87eb4d3 (HEAD -> refs/heads/master, tag: refs/tags/v1.0.0) Добавить README
+[exit 0]
+
+$ git log --oneline --no-decorate
+87eb4d3 Добавить README
+4eefa08 Базовая версия приложения
+[exit 0]
+
+# ---- Дополнительные прогоны, 27.09.2026, git 2.53.0. Условия те же, что в шапке файла; новый временной каталог, поэтому хэши не совпадают с блоками выше.
+
+===== П8.14. REFLOG: какая команда пишет «reset: moving to HEAD» — stash или stash pop
+$ git reflog -1
+07a2e08 (HEAD -> master) HEAD@{0}: commit: Добавить README
+[exit 0]
+
+$ edit; git stash
+Saved working directory and index state WIP on master: 07a2e08 Добавить README
+[exit 0]
+
+$ git reflog -2
+07a2e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD
+07a2e08 (HEAD -> master) HEAD@{1}: commit: Добавить README
+[exit 0]
+
+$ git stash pop
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (3a379bf290bd157a3319106a30bc2d984955acb9)
+[exit 0]
+
+$ git reflog -2
+07a2e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD
+07a2e08 (HEAD -> master) HEAD@{1}: commit: Добавить README
+[exit 0]
+
+$ git stash apply 2>&1; git stash list
+No stash entries found.
+[exit 0]
+
+$ git stash -m "с сообщением"
+Saved working directory and index state On master: с сообщением
+[exit 0]
+
+$ git reflog -2
+07a2e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD
+07a2e08 (HEAD -> master) HEAD@{1}: reset: moving to HEAD
+[exit 0]
+
+$ git stash drop
+Dropped refs/stash@{0} (635878a9128cddd812bbaccff8100526ca6f9413)
+[exit 0]
+
+$ git reflog -1
+07a2e08 (HEAD -> master) HEAD@{0}: reset: moving to HEAD
+[exit 0]
+
+===== П8.15. REFLOG: checkout <тег>, checkout --detach, checkout -b, git branch
+$ git tag v1.0.0 HEAD~1
+[exit 0]
+
+$ git checkout v1.0.0
+Note: switching to 'v1.0.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 52407b7 Базовая версия приложения
+[exit 0]
+
+$ git reflog -1
+52407b7 (HEAD, tag: v1.0.0) HEAD@{0}: checkout: moving from master to v1.0.0
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was 52407b7 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git reflog -1
+d1cb1bd (HEAD -> master) HEAD@{0}: checkout: moving from 52407b7ebb68542f67aeafb982b2f1d0c6172324 to master
+[exit 0]
+
+$ git checkout --detach feature~1
+HEAD is now at 12f563f fix: опечатка в логе
+[exit 0]
+
+$ git reflog -1
+12f563f (HEAD) HEAD@{0}: checkout: moving from master to feature~1
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was 12f563f fix: опечатка в логе
+Switched to branch 'master'
+[exit 0]
+
+$ git checkout -b hotfix
+Switched to a new branch 'hotfix'
+[exit 0]
+
+$ git reflog -1
+d1cb1bd (HEAD -> hotfix, master) HEAD@{0}: checkout: moving from master to hotfix
+[exit 0]
+
+$ git reflog show hotfix
+d1cb1bd (HEAD -> hotfix, master) hotfix@{0}: branch: Created from HEAD
+[exit 0]
+
+$ git checkout master
+Switched to branch 'master'
+[exit 0]
+
+$ git branch topic master~1
+[exit 0]
+
+$ git reflog -1
+d1cb1bd (HEAD -> master, hotfix) HEAD@{0}: checkout: moving from hotfix to master
+[exit 0]
+
+$ git reflog show topic
+52407b7 (tag: v1.0.0, topic) topic@{0}: branch: Created from master~1
+[exit 0]
+
+$ git checkout topic
+Switched to branch 'topic'
+[exit 0]
+
+$ git reflog -1
+52407b7 (HEAD -> topic, tag: v1.0.0) HEAD@{0}: checkout: moving from master to topic
+[exit 0]
+
+===== П8.16. REFLOG: rebase-перемотка (ветка без своих коммитов)
+$ git rebase master
+Successfully rebased and updated refs/heads/topic.
+[exit 0]
+
+$ git reflog -3
+d1cb1bd (HEAD -> topic, master, hotfix) HEAD@{0}: rebase (finish): returning to refs/heads/topic
+d1cb1bd (HEAD -> topic, master, hotfix) HEAD@{1}: rebase (start): checkout master
+52407b7 (tag: v1.0.0) HEAD@{2}: checkout: moving from master to topic
+[exit 0]
+
+$ git reflog show topic
+d1cb1bd (HEAD -> topic, master, hotfix) topic@{0}: rebase (finish): refs/heads/topic onto d1cb1bd8efd3cab6ccada1e88d203b109ecf4154
+52407b7 (tag: v1.0.0) topic@{1}: branch: Created from master~1
+[exit 0]
+
+===== П8.17. REFLOG: rebase master на feature (исходная история)
+$ git rebase feature
+Rebasing (1/1)<CR>Successfully rebased and updated refs/heads/master.
+[exit 0]
+
+$ git reflog -4
+1b8ea7e (HEAD -> master) HEAD@{0}: rebase (finish): returning to refs/heads/master
+1b8ea7e (HEAD -> master) HEAD@{1}: rebase (pick): Добавить README
+e3fdcc2 (feature) HEAD@{2}: rebase (start): checkout feature
+802e12c HEAD@{3}: commit: Добавить README
+[exit 0]
+
+$ git reflog show master
+1b8ea7e (HEAD -> master) master@{0}: rebase (finish): refs/heads/master onto e3fdcc2f4a49705daf86cbf07631f7f52da23082
+802e12c master@{1}: commit: Добавить README
+c558c7a master@{2}: commit (initial): Базовая версия приложения
+[exit 0]
+
+===== П8.18. REFLOG: rebase в отсоединённом HEAD
+$ git checkout --detach feature~1
+HEAD is now at 3a46230 fix: опечатка в логе
+[exit 0]
+
+$ git status
+HEAD detached at 3a46230
+nothing to commit, working tree clean
+[exit 0]
+
+$ git rebase master
+Rebasing (1/1)<CR>Successfully rebased and updated detached HEAD.
+[exit 0]
+
+$ git reflog -4
+96a6924 (HEAD) HEAD@{0}: rebase (pick): fix: опечатка в логе
+14f9d4e (master) HEAD@{1}: rebase (start): checkout master
+3a46230 HEAD@{2}: checkout: moving from master to feature~1
+14f9d4e (master) HEAD@{3}: commit: Добавить README
+[exit 0]
+
+$ git status
+HEAD detached from 3a46230
+nothing to commit, working tree clean
+[exit 0]
+
+$ git rebase master
+HEAD is up to date.
+[exit 0]
+
+$ git reflog -1
+96a6924 (HEAD) HEAD@{0}: rebase (pick): fix: опечатка в логе
+[exit 0]
+
+===== П8.19. ОТСОЕДИНЁННЫЙ HEAD: checkout <id7>, status, branch, commit, stash
+$ git checkout $(git rev-parse --short HEAD~1)
+Note: switching to 'e3ea6e8'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at e3ea6e8 Базовая версия приложения
+[exit 0]
+
+$ git status
+HEAD detached at e3ea6e8
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at e3ea6e8)
+  feature
+  master
+[exit 0]
+
+$ git reflog -1
+e3ea6e8 (HEAD) HEAD@{0}: checkout: moving from master to e3ea6e8
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was e3ea6e8 Базовая версия приложения
+Switched to branch 'master'
+[exit 0]
+
+$ git checkout --detach feature~1
+HEAD is now at c1fa5c6 fix: опечатка в логе
+[exit 0]
+
+$ git status
+HEAD detached at c1fa5c6
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached at c1fa5c6)
+  feature
+  master
+[exit 0]
+
+$ git checkout master
+Previous HEAD position was c1fa5c6 fix: опечатка в логе
+Switched to branch 'master'
+[exit 0]
+
+$ git tag v1.0.0 HEAD~1
+[exit 0]
+
+$ git checkout v1.0.0 2>&1 | tail -1
+HEAD is now at e3ea6e8 Базовая версия приложения
+[exit 0]
+
+$ git branch
+* (HEAD detached at v1.0.0)
+  feature
+  master
+[exit 0]
+
+$ git status
+HEAD detached at v1.0.0
+nothing to commit, working tree clean
+[exit 0]
+
+$ edit; git stash
+Saved working directory and index state WIP on (no branch): e3ea6e8 Базовая версия приложения
+[exit 0]
+
+$ git stash list
+stash@{0}: WIP on (no branch): e3ea6e8 Базовая версия приложения
+[exit 0]
+
+$ git reflog -2
+e3ea6e8 (HEAD, tag: v1.0.0) HEAD@{0}: checkout: moving from master to v1.0.0
+ce1d4dc (master) HEAD@{1}: checkout: moving from c1fa5c6058fbc0a4189d125a21bc5d6d2b52a8a5 to master
+[exit 0]
+
+$ git stash pop
+HEAD detached at v1.0.0
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (941f771fa7c95b20f65d45cad6bcad84fda4d9c6)
+[exit 0]
+
+$ git add app.js; git commit -m "Правка в отсоединённом HEAD"
+[detached HEAD 1c2545c] Правка в отсоединённом HEAD
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[exit 0]
+
+$ git status
+HEAD detached from v1.0.0
+nothing to commit, working tree clean
+[exit 0]
+
+$ git branch
+* (HEAD detached from v1.0.0)
+  feature
+  master
+[exit 0]
+
+$ git log --oneline --all
+1c2545c (HEAD) Правка в отсоединённом HEAD
+ce1d4dc (master) Добавить README
+60817e2 (feature) Добавить страницу «О проекте»
+c1fa5c6 fix: опечатка в логе
+e3ea6e8 (tag: v1.0.0) Базовая версия приложения
+[exit 0]
+
+$ git reflog -2
+1c2545c (HEAD) HEAD@{0}: commit: Правка в отсоединённом HEAD
+e3ea6e8 (tag: v1.0.0) HEAD@{1}: checkout: moving from master to v1.0.0
+[exit 0]
+
+$ git checkout master
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  1c2545c Правка в отсоединённом HEAD
+
+If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> 1c2545c
+
+Switched to branch 'master'
+[exit 0]
+
+$ git log --oneline --all
+ce1d4dc (HEAD -> master) Добавить README
+60817e2 (feature) Добавить страницу «О проекте»
+c1fa5c6 fix: опечатка в логе
+e3ea6e8 (tag: v1.0.0) Базовая версия приложения
+[exit 0]
+
+===== П8.20. ТЕГИ И PUSH: обстановка раздела 5 (bare-сервер origin, клон local)
+$ git clone origin local
+Cloning into 'local'...
+done.
+[exit 0]
+
+$ git tag v1.0.0
+[exit 0]
+
+$ git tag -a v1.1.0 -m "Релиз"
+[exit 0]
+
+$ git push
+Everything up-to-date
+[exit 0]
+
+$ git ls-remote --tags origin
+[exit 0]
+
+$ printf "\n\nВерсия 2." >> README.md; git commit -qam "Вторая версия"; git push
+To /work/origin
+   e80b1f9..25323ef  master -> master
+[exit 0]
+
+$ git ls-remote --tags origin
+[exit 0]
+
+$ git push origin v1.0.0
+To /work/origin
+ * [new tag]         v1.0.0 -> v1.0.0
+[exit 0]
+
+$ git ls-remote --tags origin
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.0.0
+[exit 0]
+
+$ git push --tags
+To /work/origin
+ * [new tag]         v1.1.0 -> v1.1.0
+[exit 0]
+
+$ git ls-remote --tags origin
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.0.0
+7f0b775ffc1836e375506ae5f69bf461c3e41817	refs/tags/v1.1.0
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.1.0^{}
+[exit 0]
+
+$ git tag -a v2.0.0 -m "Второй релиз"
+[exit 0]
+
+$ git push --follow-tags
+To /work/origin
+ * [new tag]         v2.0.0 -> v2.0.0
+[exit 0]
+
+$ git ls-remote --tags origin
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.0.0
+7f0b775ffc1836e375506ae5f69bf461c3e41817	refs/tags/v1.1.0
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.1.0^{}
+bb17a0827d84316bc86007d9ac703b3195ea035e	refs/tags/v2.0.0
+25323ef8dc36dbcdb2022c4fa52f5f31cf1e6800	refs/tags/v2.0.0^{}
+[exit 0]
+
+$ git tag -d v1.0.0
+Deleted tag 'v1.0.0' (was e80b1f9)
+[exit 0]
+
+$ git ls-remote --tags origin
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.0.0
+7f0b775ffc1836e375506ae5f69bf461c3e41817	refs/tags/v1.1.0
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.1.0^{}
+bb17a0827d84316bc86007d9ac703b3195ea035e	refs/tags/v2.0.0
+25323ef8dc36dbcdb2022c4fa52f5f31cf1e6800	refs/tags/v2.0.0^{}
+[exit 0]
+
+$ git push origin --delete v1.0.0
+To /work/origin
+ - [deleted]         v1.0.0
+[exit 0]
+
+$ git ls-remote --tags origin
+7f0b775ffc1836e375506ae5f69bf461c3e41817	refs/tags/v1.1.0
+e80b1f9d0e8d038643610671789afe6f4df45356	refs/tags/v1.1.0^{}
+bb17a0827d84316bc86007d9ac703b3195ea035e	refs/tags/v2.0.0
+25323ef8dc36dbcdb2022c4fa52f5f31cf1e6800	refs/tags/v2.0.0^{}
+[exit 0]
+
