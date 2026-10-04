@@ -25,6 +25,7 @@
 // `git <команда> --help` / `git help -a` (git 2.53.0, 20.09.2026) — не по памяти.
 // ============================================================
 import { abbreviatedOptionCandidates } from './optionAbbrev'
+import { classifyOptionToken } from './outOfScopeForms'
 
 /** Область раздела 1 — что реализовано буквально, поведение 1:1 с настоящим git. */
 export const SECTION_SCOPE = {
@@ -274,6 +275,204 @@ export const REAL_GIT_OPTIONS: Record<ScopedOptionCommand, readonly string[]> = 
   ],
 }
 
+/**
+ * Полный набор опций, которые настоящий git принимает у add/commit/status: вывод
+ * `git <команда> -h` плюс `git <команда> --git-completion-helper` (сверено на git 2.53.0,
+ * 04.10.2026). Нужен для
+ * границы «принимает git, но раздел не разбирает» (отказ), а не «такой опции нет» (ошибка git):
+ * опция вне этого набора и вне REAL_GIT_OPTIONS заведомо не существует. Формы
+ * `--no-<имя>` отдельно не перечислены — см. isNegatedRealOption. Список кандидатов для
+ * «ambiguous» он не расширяет (A13: считается по SECTION_SCOPE и REAL_GIT_OPTIONS); однозначный
+ * префикс из него даёт отказ.
+ */
+const VERIFIED_GIT_OPTIONS: Record<ScopedOptionCommand, readonly string[]> = {
+  add: [
+    '--all',
+    '--chmod',
+    '--dry-run',
+    '--edit',
+    '--force',
+    '--ignore-errors',
+    '--ignore-missing',
+    '--ignore-removal',
+    '--intent-to-add',
+    '--inter-hunk-context',
+    '--interactive',
+    '--no-all',
+    '--no-chmod',
+    '--no-dry-run',
+    '--no-edit',
+    '--no-force',
+    '--no-ignore-errors',
+    '--no-ignore-missing',
+    '--no-ignore-removal',
+    '--no-intent-to-add',
+    '--no-interactive',
+    '--no-patch',
+    '--no-pathspec-file-nul',
+    '--no-pathspec-from-file',
+    '--no-refresh',
+    '--no-renormalize',
+    '--no-sparse',
+    '--no-update',
+    '--no-verbose',
+    '--patch',
+    '--pathspec-file-nul',
+    '--pathspec-from-file',
+    '--refresh',
+    '--renormalize',
+    '--sparse',
+    '--unified',
+    '--update',
+    '--verbose',
+    '-A',
+    '-N',
+    '-U',
+    '-e',
+    '-f',
+    '-i',
+    '-n',
+    '-p',
+    '-u',
+    '-v',
+  ],
+  commit: [
+    '--ahead-behind',
+    '--all',
+    '--amend',
+    '--author',
+    '--branch',
+    '--cleanup',
+    '--date',
+    '--dry-run',
+    '--edit',
+    '--file',
+    '--fixup',
+    '--gpg-sign',
+    '--include',
+    '--inter-hunk-context',
+    '--interactive',
+    '--long',
+    '--message',
+    '--no-ahead-behind',
+    '--no-all',
+    '--no-amend',
+    '--no-author',
+    '--no-branch',
+    '--no-cleanup',
+    '--no-date',
+    '--no-dry-run',
+    '--no-edit',
+    '--no-file',
+    '--no-fixup',
+    '--no-gpg-sign',
+    '--no-include',
+    '--no-interactive',
+    '--no-long',
+    '--no-message',
+    '--no-null',
+    '--no-only',
+    '--no-patch',
+    '--no-pathspec-file-nul',
+    '--no-pathspec-from-file',
+    '--no-porcelain',
+    '--no-post-rewrite',
+    '--no-quiet',
+    '--no-reedit-message',
+    '--no-reset-author',
+    '--no-reuse-message',
+    '--no-short',
+    '--no-signoff',
+    '--no-squash',
+    '--no-status',
+    '--no-template',
+    '--no-untracked-files',
+    '--no-verbose',
+    '--no-verify',
+    '--null',
+    '--only',
+    '--patch',
+    '--pathspec-file-nul',
+    '--pathspec-from-file',
+    '--porcelain',
+    '--post-rewrite',
+    '--quiet',
+    '--reedit-message',
+    '--reset-author',
+    '--reuse-message',
+    '--short',
+    '--signoff',
+    '--squash',
+    '--status',
+    '--template',
+    '--trailer',
+    '--unified',
+    '--untracked-files',
+    '--verbose',
+    '--verify',
+    '-C',
+    '-F',
+    '-S',
+    '-U',
+    '-a',
+    '-c',
+    '-e',
+    '-i',
+    '-m',
+    '-n',
+    '-o',
+    '-p',
+    '-q',
+    '-s',
+    '-t',
+    '-u',
+    '-v',
+    '-z',
+  ],
+  status: [
+    '--ahead-behind',
+    '--branch',
+    '--column',
+    '--find-renames',
+    '--ignore-submodules',
+    '--ignored',
+    '--long',
+    '--no-ahead-behind',
+    '--no-branch',
+    '--no-column',
+    '--no-ignore-submodules',
+    '--no-ignored',
+    '--no-long',
+    '--no-null',
+    '--no-porcelain',
+    '--no-renames',
+    '--no-short',
+    '--no-show-stash',
+    '--no-untracked-files',
+    '--no-verbose',
+    '--null',
+    '--porcelain',
+    '--renames',
+    '--short',
+    '--show-stash',
+    '--untracked-files',
+    '--verbose',
+    '-M',
+    '-b',
+    '-s',
+    '-u',
+    '-v',
+    '-z',
+  ],
+}
+
+/** `--no-<имя>`: git принимает отрицание любой длинной опции, которую знает (parse-options.c). */
+function isNegatedRealOption(cmd: ScopedOptionCommand, bare: string): boolean {
+  if (!bare.startsWith('--no-')) return false
+  const base = '--' + bare.slice('--no-'.length)
+  return [...SECTION_SCOPE.options[cmd].flags, ...REAL_GIT_OPTIONS[cmd], ...VERIFIED_GIT_OPTIONS[cmd]].includes(base)
+}
+
 /** Классификация одной опции по правилу 1 — используется во всех трёх обработчиках (add/commit/status). */
 export type OptionClassification = 'scope' | 'outOfScope' | 'unknown' | 'ambiguous'
 
@@ -318,6 +517,18 @@ export function classifyOption(cmd: ScopedOptionCommand, flag: string): Classifi
       // пару кандидатов для "(could be A or B)" по своей внутренней логике, а не по алфавиту.
       return { kind: 'ambiguous', resolved: bare, candidates: [...candidates].sort() }
     }
+  }
+  // Не сокращение из curated-списков: опцию, которую git знает (полный набор или , либо
+  // однозначный префикс из полного набора), раздел не разбирает — отказ. Заведомо несуществующая
+  // остаётся ошибкой git (B9).
+  const cls = classifyOptionToken(bare, {
+    inScope: SECTION_SCOPE.options[cmd].flags,
+    verifiedReal: [...REAL_GIT_OPTIONS[cmd], ...VERIFIED_GIT_OPTIONS[cmd]],
+    exhaustive: true,
+  })
+  if (cls === 'refuse' || isNegatedRealOption(cmd, bare)) return { kind: 'outOfScope', resolved: bare }
+  if (bare.startsWith('--') && bare.length > 2 && VERIFIED_GIT_OPTIONS[cmd].some((o) => o.startsWith(bare))) {
+    return { kind: 'outOfScope', resolved: bare }
   }
   return { kind: 'unknown', resolved: bare }
 }

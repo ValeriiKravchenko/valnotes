@@ -34,6 +34,7 @@ import {
   sameTree,
   statusTailKind,
 } from './repo'
+import { classifyInitArguments, classifyPathspec } from './outOfScopeForms'
 import { classifyOption, describedScope, isGlobalGitOption, isSectionCommand, REAL_GIT_COMMANDS, splitShortOptionCluster } from './scope'
 import { ambiguousOptionOutput } from './optionAbbrev'
 import type { ShellToken } from './shell'
@@ -236,6 +237,12 @@ function handleAdd(state: SectionState, restTokens: string[]): { state: SectionS
   // (например в кавычках — шелл её не раскрывает, см. shell.ts), сопоставляется как glob, а
   // не сравнивается дословно с именами файлов — настоящий git умеет её сопоставить сам, см.
   // repo.ts, matchPathspec, там же обоснование и границы.
+  // Форма пути, которую git принимает, а раздел 1 не разбирает ("./x", "../x", ":(glob)…", "\\"):
+  // отказ, а не выдуманное «did not match». Глоб "*.html" раздел 1 разбирает сам (matchPathspec).
+  const foreignPath = paths.find((p) => classifyPathspec(p, { globs: true }) === 'foreign')
+  if (foreignPath !== undefined) {
+    return fail(state, ru.errors.formOutOfScope(`git add ${foreignPath}`, describedScope('add')), null)
+  }
   const candidates = [...new Set([...Object.keys(state.working), ...Object.keys(state.index)])]
   const resolved = paths.map((p) => ({ pattern: p, matches: matchPathspec(p, candidates) }))
   const firstMissing = resolved.find((r) => r.matches.length === 0)
@@ -367,6 +374,11 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
   const head = headTree(state)
 
   if (paths.length) {
+    // Та же граница форм путей, что и у git add (см. handleAdd).
+    const foreignPath = paths.find((p) => classifyPathspec(p.value, { globs: true }) === 'foreign')
+    if (foreignPath !== undefined) {
+      return fail(state, ru.errors.formOutOfScope(`git commit ${foreignPath.value}`, describedScope('commit')), null)
+    }
     if (stageAll) {
       // Реальный git отказывает раньше, чем проверяет сами пути, и делает это независимо
       // от того, существуют ли они (проверено на git 2.43+: git commit -a -m "x" <pathspec>
@@ -472,7 +484,11 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
 
 // ---------- git init ----------
 
-function handleInit(state: SectionState): { state: SectionState; result: CommandResult } {
+function handleInit(state: SectionState, args: string[]): { state: SectionState; result: CommandResult } {
+  // target.md, часть III, правило 1: git init принимает папку, -b, --bare, -q и т.д., раздел 1 — нет.
+  if (classifyInitArguments(args) === 'foreign') {
+    return fail(state, ru.errors.initArgumentsOutOfScope(`git init ${args.join(' ')}`), null)
+  }
   const r = initRepo(state)
   const explanation = r.reinitialized ? ru.explain.initReinit : ru.explain.initNew
   return { state: r.state, result: { ok: r.ok, output: r.output, explanation } }
@@ -558,7 +574,7 @@ export function executeCommand(state: SectionState, rawInput: string): { state: 
   let outcome: { state: SectionState; result: CommandResult }
   switch (sub) {
     case 'init':
-      outcome = handleInit(state)
+      outcome = handleInit(state, words.slice(2))
       break
     case 'status': {
       const { flags, args } = splitArgs(words.slice(2))
