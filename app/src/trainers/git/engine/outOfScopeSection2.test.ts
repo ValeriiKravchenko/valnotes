@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import { createBranchingSection, getBranchMissions, runBranchingCommand } from './branchSection'
 import type { BranchingState } from './branchTypes'
 
+import { ru } from '../locales/ru'
+
 const MARKER = '[тренажёр]'
 
 function run(state: BranchingState, ...lines: string[]): BranchingState {
@@ -116,6 +118,68 @@ describe('B9: опции раздела 2 — списки исчерпываю�
   it('принимаемые git, но не разбираемые — отказ', () => {
     for (const line of ['git add --no-verbose x', 'git branch --no-color', 'git checkout --no-guess feat', 'git merge --no-ff feat', 'git commit --no-verify -m x', 'git status --no-ahead-behind']) {
       expectRefusal(ready(), line)
+    }
+  })
+})
+
+// ---------- строка шелла вне модели: честный отказ, а не выдуманная ошибка git ----------
+
+describe('конструкции bash, которые тренажёр разбирает не так, как bash, — отказ', () => {
+  const refuse = (l: string) => {
+    expectRefusal(ready(), l)
+    return output(ready(), l)
+  }
+  const X = 'git branch'
+
+  it('git branch feat2;git status и git checkout -b x\\ y — отказ по оператору и по обратной косой', () => {
+    expect(refuse('git branch feat2;git status')).toBe(ru.errors.shellOperatorUnsupported(';'))
+    expect(refuse(`git checkout -b x\\ y`)).toBe(ru.errors.shellBackslashUnsupported)
+  })
+
+  it('операторы ; && || | & > < ( ) вне кавычек', () => {
+    const cases: Array<[string, string]> = [
+      [`${X};git status`, ';'],
+      [`${X} && git status`, '&&'],
+      [`${X} || git status`, '||'],
+      [`${X} | cat`, '|'],
+      [`${X} & `, '&'],
+      [`${X} > out.txt`, '>'],
+      [`${X} < in.txt`, '<'],
+      [`${X} (a)`, '('],
+    ]
+    for (const [line, op] of cases) expect(refuse(line), line).toBe(ru.errors.shellOperatorUnsupported(op))
+  })
+
+  it('обратная косая вне кавычек', () => {
+    for (const line of [`${X} a\\ b`, `${X} a\\+`, `${X} \\"a`]) {
+      expect(refuse(line), line).toBe(ru.errors.shellBackslashUnsupported)
+    }
+  })
+
+  it('подстановки: $имя, $(…), ~, фигурные скобки, комментарий, а также $ внутри двойных кавычек', () => {
+    const cases: Array<[string, string]> = [
+      [`${X} $HOME`, '$HOME'],
+      [`${X} $(echo`, '$(echo'],
+      [`${X} ~`, '~'],
+      [`${X} ~/x`, '~/x'],
+      [`${X} {a,b}`, '{a,b}'],
+      [`${X} #c`, '#'],
+      [`${X} "$HOME"`, '$HOME"'],
+    ]
+    for (const [line, fragment] of cases) expect(refuse(line), line).toBe(ru.errors.shellExpansionUnsupported(fragment))
+  })
+
+  it('кавычки: незакрытая — отказ; косая перед \\, " и $ внутри двойных — отказ', () => {
+    expect(refuse(`${X} "a`)).toBe(ru.errors.shellQuoteUnclosed)
+    expect(refuse(`${X} 'a`)).toBe(ru.errors.shellQuoteUnclosed)
+    expect(refuse(`${X} "a\\\\b"`)).toBe(ru.errors.shellQuotedEscapeUnsupported('\\\\'))
+    expect(refuse(`${X} "a\\"b"`)).toBe(ru.errors.shellQuotedEscapeUnsupported('\\"'))
+    expect(refuse(`${X} "\\$a"`)).toBe(ru.errors.shellQuotedEscapeUnsupported('\\$'))
+  })
+
+  it('маски ? и […] без кавычек — отказ шелла, как и *', () => {
+    for (const mask of ['?.txt', '[ab].txt', 'a*']) {
+      expect(refuse(`${X} ${mask}`), mask).toBe(ru.errors.shellGlobUnsupported(mask))
     }
   })
 })

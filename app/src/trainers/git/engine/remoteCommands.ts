@@ -60,7 +60,7 @@ import {
 import { classifySection2Option } from './branchScope'
 import { classifyPathspec, classifyPushRefspec, classifyRefToken, classifyRepositoryArgument, REMOTE_REF_GRAMMAR } from './outOfScopeForms'
 import type { ShellToken } from './shell'
-import { shellTokenize } from './shell'
+import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
 import { has } from './util'
 import { ru } from '../locales/ru'
@@ -698,6 +698,9 @@ export function executeRemoteCommand(state: RemoteState, rawInput: string): { st
   function respond(pair: { state: RemoteState; result: CommandResult }) {
     return { state: appendCommand(pair.state, rawInput, pair.result), result: pair.result }
   }
+
+  const refusal = findShellRefusal(rawInput)
+  if (refusal) return respond(fail(state, shellRefusalText(refusal)))
 
   if (words[0] !== 'git') return respond(fail(state, ru.errors.bashCommandNotFound(words[0] ?? '')))
 

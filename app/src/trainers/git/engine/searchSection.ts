@@ -3,7 +3,7 @@
 // «Проект»: публичная точка входа. Аналог inspectSection.ts (раздел 3) —
 // интегратору достаточно импортировать отсюда (или из общего index.ts).
 // Внутренние модули (searchRepo.ts/searchCommands.ts/searchGrep.ts/
-// searchBlame.ts/searchScope.ts/searchShell.ts) напрямую снаружи пакета
+// searchBlame.ts/searchScope.ts) напрямую снаружи пакета
 // engine/ не импортируются.
 //
 // ШАГ B («Магазин», git bisect, target.md, часть VIII) этим модулем НЕ

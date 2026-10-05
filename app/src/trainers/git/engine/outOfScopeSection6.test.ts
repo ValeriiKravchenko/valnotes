@@ -158,3 +158,65 @@ describe('порядок файлов — по байтам UTF-8 имени (к
     expect(out('git grep needle HEAD -- utils.js B.js', state)).toBe('HEAD:B.js:needle\nHEAD:utils.js:needle')
   })
 })
+
+// ---------- строка шелла вне модели: честный отказ, а не выдуманная ошибка git ----------
+
+describe('конструкции bash, которые тренажёр разбирает не так, как bash, — отказ', () => {
+  const refuse = (l: string) => {
+    expectRefusal(l)
+    return out(l)
+  }
+  const X = 'git grep -n x'
+
+  it('git grep -n x\\+ и git grep -n x;git status — отказ по оператору и по обратной косой', () => {
+    expect(refuse(`git grep -n x\\+`)).toBe(ru.errors.shellBackslashUnsupported)
+    expect(refuse('git grep -n x;git status')).toBe(ru.errors.shellOperatorUnsupported(';'))
+  })
+
+  it('операторы ; && || | & > < ( ) вне кавычек', () => {
+    const cases: Array<[string, string]> = [
+      [`${X};git status`, ';'],
+      [`${X} && git status`, '&&'],
+      [`${X} || git status`, '||'],
+      [`${X} | cat`, '|'],
+      [`${X} & `, '&'],
+      [`${X} > out.txt`, '>'],
+      [`${X} < in.txt`, '<'],
+      [`${X} (a)`, '('],
+    ]
+    for (const [line, op] of cases) expect(refuse(line), line).toBe(ru.errors.shellOperatorUnsupported(op))
+  })
+
+  it('обратная косая вне кавычек', () => {
+    for (const line of [`${X} a\\ b`, `${X} a\\+`, `${X} \\"a`]) {
+      expect(refuse(line), line).toBe(ru.errors.shellBackslashUnsupported)
+    }
+  })
+
+  it('подстановки: $имя, $(…), ~, фигурные скобки, комментарий, а также $ внутри двойных кавычек', () => {
+    const cases: Array<[string, string]> = [
+      [`${X} $HOME`, '$HOME'],
+      [`${X} $(echo`, '$(echo'],
+      [`${X} ~`, '~'],
+      [`${X} ~/x`, '~/x'],
+      [`${X} {a,b}`, '{a,b}'],
+      [`${X} #c`, '#'],
+      [`${X} "$HOME"`, '$HOME"'],
+    ]
+    for (const [line, fragment] of cases) expect(refuse(line), line).toBe(ru.errors.shellExpansionUnsupported(fragment))
+  })
+
+  it('кавычки: незакрытая — отказ; косая перед \\, " и $ внутри двойных — отказ', () => {
+    expect(refuse(`${X} "a`)).toBe(ru.errors.shellQuoteUnclosed)
+    expect(refuse(`${X} 'a`)).toBe(ru.errors.shellQuoteUnclosed)
+    expect(refuse(`${X} "a\\\\b"`)).toBe(ru.errors.shellQuotedEscapeUnsupported('\\\\'))
+    expect(refuse(`${X} "a\\"b"`)).toBe(ru.errors.shellQuotedEscapeUnsupported('\\"'))
+    expect(refuse(`${X} "\\$a"`)).toBe(ru.errors.shellQuotedEscapeUnsupported('\\$'))
+  })
+
+  it('маски ? и […] без кавычек — отказ шелла, как и *', () => {
+    for (const mask of ['?.txt', '[ab].txt', 'a*']) {
+      expect(refuse(`${X} ${mask}`), mask).toBe(ru.errors.shellGlobUnsupported(mask))
+    }
+  })
+})

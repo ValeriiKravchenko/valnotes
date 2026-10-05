@@ -43,8 +43,7 @@ import {
   isGlobalGitOption,
   isSection6ACommand,
 } from './searchScope'
-import { findUnquotedShellMeta } from './searchShell'
-import { shellTokenize } from './shell'
+import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { diffBetween } from './inspectDiff'
 import { ru } from '../locales/ru'
 
@@ -423,11 +422,11 @@ function appendCommand(state: SearchState, rawInput: string, result: CommandResu
 }
 
 /**
- * Выполняет одну строку терминала «Проект» (шаг A). Проверка на символы шелла вне области
- * (target.md, опасное место 3) — на СЫРОЙ строке, до разбора шеллом (shellTokenize): эти символы
- * (`( ) < > | ; &`) меняют, КАК бы bash вообще разбил командную строку на слова (перенаправление,
- * конвейер, список команд), поэтому модель "одно слово = один аргумент" (shell.ts) для них в
- * принципе неприменима — честный отказ раньше, чем tokenizer вообще попытался бы её применить.
+ * Выполняет одну строку терминала «Проект» (шаг A). Проверка на конструкции шелла вне области
+ * (findShellRefusal, shell.ts; target.md, опасное место 3) — на СЫРОЙ строке, до разбора шеллом
+ * (shellTokenize): операторы и экранирование меняют, КАК бы bash вообще разбил командную строку
+ * на слова, поэтому модель "одно слово = один аргумент" для них неприменима — честный отказ
+ * раньше, чем токенизатор попытался бы её применить.
  */
 export function executeSearchCommand(state: SearchState, rawInput: string): { state: SearchState; result: CommandResult | null } {
   if (!rawInput.trim()) return { state, result: null }
@@ -436,7 +435,8 @@ export function executeSearchCommand(state: SearchState, rawInput: string): { st
     return { state: appendCommand(pair.state, rawInput, pair.result), result: pair.result }
   }
 
-  if (findUnquotedShellMeta(rawInput) !== null) return respond(fail(state, se.shellMetaUnsupported))
+  const refusal = findShellRefusal(rawInput)
+  if (refusal) return respond(fail(state, shellRefusalText(refusal)))
 
   const tokens = shellTokenize(rawInput, Object.keys(headTree(state)))
   const words = tokens.map((t) => t.text)

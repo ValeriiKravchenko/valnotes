@@ -38,7 +38,7 @@ import { classifyInitArguments, classifyPathspec } from './outOfScopeForms'
 import { classifyOption, describedScope, isGlobalGitOption, isSectionCommand, REAL_GIT_COMMANDS, splitShortOptionCluster } from './scope'
 import { ambiguousOptionOutput } from './optionAbbrev'
 import type { ShellToken } from './shell'
-import { shellTokenize } from './shell'
+import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
 import { ru } from '../locales/ru'
 
@@ -517,6 +517,13 @@ function appendCommand(state: SectionState, rawInput: string, result: CommandRes
  */
 export function executeCommand(state: SectionState, rawInput: string): { state: SectionState; result: CommandResult | null } {
   if (!rawInput.trim()) return { state, result: null }
+
+  // Конструкции bash, которые тренажёр разбирает не так, как bash, — отказ раньше любого разбора (см. shell.ts).
+  const refusal = findShellRefusal(rawInput)
+  if (refusal) {
+    const r = fail(state, shellRefusalText(refusal), null)
+    return { state: appendCommand(state, rawInput, r.result), result: r.result }
+  }
 
   const tokens = shellTokenize(rawInput, Object.keys(state.working))
   const words = tokens.map((t) => t.text)

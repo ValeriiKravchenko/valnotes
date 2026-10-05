@@ -212,20 +212,20 @@ describe('git grep — поиск в коммите', () => {
 // ---------- символы шелла и слова без кавычек (target.md, опасное место 3) ----------
 
 describe('символы шелла вне модели (опасное место 3)', () => {
-  it('git grep -n => fn — честный отказ, без выдумки поведения bash', () => {
+  it('git grep -n => fn — честный отказ по оператору «>», без выдумки поведения bash', () => {
     const { result } = run(baseState(), 'git grep -n => fn')
-    expect(result.output).toBe(ru.searching.errors.shellMetaUnsupported)
+    expect(result.output).toBe(ru.errors.shellOperatorUnsupported('>'))
     expect(result.exitCode).toBeUndefined()
   })
 
-  it('git grep -n (fn (без кавычек) — тот же отказ', () => {
+  it('git grep -n (fn (без кавычек) — отказ по оператору «(»', () => {
     const { result } = run(baseState(), 'git grep -n (fn')
-    expect(result.output).toBe(ru.searching.errors.shellMetaUnsupported)
+    expect(result.output).toBe(ru.errors.shellOperatorUnsupported('('))
   })
 
-  it("git grep -n renderCard\\|debounce (без кавычек, '|' — конвейер для шелла)", () => {
+  it("git grep -n renderCard\\|debounce (без кавычек) — отказ по обратной косой: bash снял бы её и передал git `renderCard|debounce`, конвейера тут нет", () => {
     const { result } = run(baseState(), 'git grep -n renderCard\\|debounce')
-    expect(result.output).toBe(ru.searching.errors.shellMetaUnsupported)
+    expect(result.output).toBe(ru.errors.shellBackslashUnsupported)
   })
 
   it('git grep -n export function (два слова без кавычек) — ambiguous argument про "function", код 128', () => {

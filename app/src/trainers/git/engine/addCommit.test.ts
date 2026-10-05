@@ -630,12 +630,12 @@ describe('target.md, часть III, правило 1 (пункт 1): pathspec-�
     expect(after.index['a.txt']).toBeUndefined()
   })
 
-  it('символ "?" — ровно один символ (даже незакавыченный, шелл его не трогает — unsupportedGlob ставится только на "*")', () => {
+  it('символ "?" в кавычках — ровно один символ (git-глоб; без кавычек "?" раскрыл бы шелл — это отказ, см. shell.test.ts)', () => {
     let state = run(createSection(), 'git init', 'git add index.html') // унести index.html с дороги
     state = createFile(state, 'a.txt')
     state = createFile(state, 'b.txt')
     state = createFile(state, 'ab.txt')
-    const { state: after, result } = runCommand(state, 'git add ?.txt')
+    const { state: after, result } = runCommand(state, 'git add "?.txt"')
     expect(result?.ok).toBe(true)
     expect(after.index['a.txt']).toBeDefined()
     expect(after.index['b.txt']).toBeDefined()

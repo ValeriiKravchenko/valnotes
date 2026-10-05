@@ -41,7 +41,7 @@ import {
 import type { SafetyBlock } from './branchRepo'
 import { classifySection2Option, gitNotACommand, isGlobalGitOption, isSection2Command, REAL_GIT_COMMANDS } from './branchScope'
 import type { ShellToken } from './shell'
-import { shellTokenize } from './shell'
+import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
 import { classifyPathspec } from './outOfScopeForms'
 import { has } from './util'
@@ -1006,6 +1006,9 @@ export function executeBranchingCommand(state: BranchingState, rawInput: string)
   function respond(pair: { state: BranchingState; result: CommandResult }) {
     return { state: appendCommand(pair.state, rawInput, pair.result), result: pair.result }
   }
+
+  const refusal = findShellRefusal(rawInput)
+  if (refusal) return respond(fail(state, shellRefusalText(refusal), null))
 
   if (words[0] !== 'git') return respond(fail(state, ru.errors.bashCommandNotFound(words[0] ?? ''), null))
 

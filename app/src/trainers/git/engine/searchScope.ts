@@ -166,7 +166,7 @@ export const BLAME_USAGE =
  *
  * `--[no-]имя` в usage-блоке — обе формы (`--имя` и `--no-имя`) внесены явно. Голые `(`/`)` из
  * usage-блока не внесены — они не читаются как отдельный флаг (это не `-x`/`--xxx`), а как символ
- * шелла отсекаются раньше, до разбора grep (`searchShell.ts`, findUnquotedShellMeta). `-NUM`
+ * шелла отсекаются раньше, до разбора grep (`shell.ts`, findShellRefusal). `-NUM`
  * (сокращение `-C NUM`) — не литеральный токен, разбирается отдельно, см. `GREP_NUM_SHORTCUT`.
  */
 export const GREP_KNOWN_OUT_OF_SCOPE: readonly string[] = [

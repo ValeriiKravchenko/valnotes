@@ -28,7 +28,7 @@ import {
 import { diffBetween, diffNameOnly, diffStat } from './inspectDiff'
 import { classifyPathspec, classifyRefToken, gitUnrecognizedArgument, INSPECT_REF_GRAMMAR } from './outOfScopeForms'
 import { classifySection3Option, gitNotACommand, isGlobalGitOption, isSection3Command, REAL_GIT_COMMANDS } from './inspectScope'
-import { shellTokenize } from './shell'
+import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { has } from './util'
 import { ru } from '../locales/ru'
 
@@ -384,6 +384,9 @@ export function executeInspectCommand(state: InspectState, rawInput: string): { 
   function respond(pair: { state: InspectState; result: CommandResult }) {
     return { state: appendCommand(pair.state, rawInput, pair.result), result: pair.result }
   }
+
+  const refusal = findShellRefusal(rawInput)
+  if (refusal) return respond(fail(state, shellRefusalText(refusal), null))
 
   if (words[0] !== 'git') return respond(fail(state, ru.errors.bashCommandNotFound(words[0] ?? ''), null))
 
