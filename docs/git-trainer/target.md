@@ -662,10 +662,10 @@ From /team/origin
 
 Fetch-часть выполняется первой. Если на сервере есть новое, pull печатает `From /team/origin` и строки обновления `origin/*`; если fetch уже сделан — этих строк нет. Дальше:
 
-- перемотка: `Updating <a>..<b>`, `Fast-forward` (и диффстат, опасное место 9);
+- перемотка: `Updating <a>..<b>`, `Fast-forward`, затем одна строка тренажёра о пропущенной статистике (опасное место 9);
 - вливать нечего, в том числе когда копия только впереди: `Already up to date.`;
 - ветки разошлись, `pull.rebase` и `pull.ff` не заданы, в команде нет `--rebase`, `--no-rebase`, `--ff-only`: блок `hint: You have divergent branches and need to specify how to reconcile them.` … и `fatal: Need to specify how to reconcile divergent branches.`, код 128. Ветка не меняется;
-- `--no-rebase` или `pull.rebase false`: коммит слияния, `Merge made by the 'ort' strategy.`;
+- `--no-rebase` или `pull.rebase false`: коммит слияния, `Merge made by the 'ort' strategy.`, затем та же строка тренажёра;
 - `--ff-only` или `pull.ff only`: перемотка проходит как обычно; на расхождении — свой блок hint (`hint: Diverging branches can't be fast-forwarded, you need to either:` …) и `fatal: Not possible to fast-forward, aborting.`, код 128.
 
 Fetch-часть не откатывается при отказе: после него `origin/master` уже обновлён, и `git status` показывает `have diverged`.
@@ -707,7 +707,7 @@ Usage-блоки из прогонов служат и списком насто
 
 ### 9. Диффстат
 
-После перемотки и слияния при pull git печатает диффстат: ` CHANGELOG.md | 1 +`, ` 1 file changed, 1 insertion(+)`, а при появлении файла ещё ` create mode 100644 CHANGELOG.md`. Раздел 2 диффстат не печатает — сознательное упрощение, записанное в шапке `branchCommands.ts`. Раздел 5 его наследует.
+После перемотки и слияния при pull git печатает диффстат: ` CHANGELOG.md | 1 +`, ` 1 file changed, 1 insertion(+)`, а при появлении файла ещё ` create mode 100644 CHANGELOG.md`. Тренажёр диффстат не печатает — сознательное упрощение, как в разделе 2 (шапка `branchCommands.ts`). Но на pull пропуск заметен, поэтому после перемотки и после слияния тренажёр добавляет одну свою строку с маркером `[тренажёр]`: git в этом месте показал бы статистику изменений, а тренажёр её опускает (ключ словаря `ru.remote.notes.pullStatOmitted`). Строки нет при `Already up to date.` и при любом отказе (расхождение, `--ff-only` на расхождении, конфликт, ошибки). `fetch` не меняется: диффстата у git там нет.
 
 ### 10. `origin/HEAD` и удаление текущей ветки
 
@@ -866,7 +866,7 @@ git 2.53: `  (use "git pull" if you want to integrate the remote branch with you
 | S6-07 | A | флажок `-i` | `git grep -n -i Debounce` и `git grep -ni Debounce` → те же 2 строки, регистр в тексте исходный |
 | S6-08 | A | один символ — просьба ввести минимум 2 | порога нет: `git grep -n a` → 10 строк, код 0 |
 | S6-09 | A | `x  y` → «Совпадений нет» | `git grep -n 'x  y'` → пустой вывод, код 1. Без кавычек `git grep -n x y` → `fatal: ambiguous argument 'y'…`, код 128 (опасное место 3) |
-| S6-10 | A | `(fn` «ищется как обычный текст» | `git grep -n '(fn'` → `utils.js:5:…`, код 0: в BRE `(` — обычный символ. С `-E` → `fatal: command line, '(fn': Unmatched ( or \(`, код 128 (опасное место 2) |
+| S6-10 | A | `(fn` «ищется как обычный текст» | `git grep -n '(fn'` → `utils.js:5:…`, код 0: в BRE `(` — обычный символ (опасное место 2) |
 | S6-11, S6-12 | A | миссия 1 по вводу в поле | по событию в терминале (см. «Миссии»); засчитанная миссия остаётся засчитанной |
 | S6-13 | A | 7 строк с номерами в виджете | `git blame app.js` → 7 строк, номера 1…7 |
 | S6-14 | A | клик по строке 5: «commit 9c8b7a6», «Марина», «Сохранять id товара» | строка 5 blame — `<id8> (Марина 2026-04-02 12:00:00 +0300 5)   el.dataset.id = item.id;`. `git show <id8>` → `commit <id>`, `Author: Марина <marina@example.com>`, `Date:   Thu Apr 2 12:00:00 2026 +0300`, `    Сохранять id товара в data-атрибуте` и diff с добавленной строкой `+  el.dataset.id = item.id;` (контекст функции в `@@` — упрощение, см. выше) |
@@ -1028,7 +1028,6 @@ git 2.53: `  (use "git pull" if you want to integrate the remote branch with you
 
 | Шаблон | Вывод git |
 |---|---|
-| `-E '(fn'` | `fatal: command line, '(fn': Unmatched ( or \(` |
 | `'\(fn'` | `fatal: command line, '\(fn': Unmatched ( or \(` |
 | `'['` | `fatal: command line, '[': Invalid regular expression` |
 | `'[z-a]'` | `fatal: command line, '[z-a]': Invalid range end` |
@@ -1175,7 +1174,7 @@ Git печатает файлы в порядке байтов имени, по�
 
 ### 16. Находка первого плохого коммита
 
-Git печатает `<id> is the first bad commit`, затем блок: `commit <id>`, `Author: …`, `Date:   …`, пустая строка, `    <сообщение>`, пустая строка и статистика изменённых файлов. Тренажёр печатает всё то же, кроме статистики — её он не печатает (решение владельца), как и диффстат в разделах 2 и 5 (часть VII, место 9). То, что git показал бы здесь ещё и список изменённых файлов, тренажёр говорит своей речью. `source.html` печатает только 7 знаков хэша и строку сообщения.
+Git печатает `<id> is the first bad commit`, затем блок: `commit <id>`, `Author: …`, `Date:   …`, пустая строка, `    <сообщение>`, пустая строка и статистика изменённых файлов. Тренажёр печатает всё то же, кроме статистики — её он не печатает (решение владельца), как и диффстат в разделах 2 и 5 (в разделе 5 — с пометкой на pull; часть VII, место 9). То, что git показал бы здесь ещё и список изменённых файлов, тренажёр говорит своей речью. `source.html` печатает только 7 знаков хэша и строку сообщения.
 
 После находки повторная отметка, которая оставляет одного кандидата (например, снова `git bisect good` на c6), печатает тот же блок, код 0. `git bisect bad` на c6, отмеченном хорошим, — противоречие (см. «Движок»).
 
@@ -1824,7 +1823,7 @@ The most similar commands are
 
 - `git log`, `git log -1`, `git show`: `commit <id> (<подписи>)`, пустая строка, `    <сообщение>`, без `Author:` и `Date:`;
 - `git show <аннотированный тег>`: `tag <имя>`, пустая строка, сообщение тега, пустая строка, дальше как у `git show` коммита. Строк `Tagger:` и `Date:` нет, хотя в прогоне они есть (П8.2). Речь тренажёра говорит, что git хранит у аннотированного тега автора и дату;
-- `git cherry-pick`: только первая строка `[master <id7>] <сообщение>`. Git печатает ещё ` Date: <дата>` и диффстат (П8.4). Дата там — исходного коммита, а не текущая: в П8.10 cherry-pick, сделанный после коммита «Добавить README» (13:35) и тега (13:37), печатает ` Date: Mon Jun 1 13:33:00 2026 +0300`. Git сохраняет дату автора исходного коммита и поэтому показывает её. Это говорит речь тренажёра. Диффстат не печатается, как в разделах 2 и 5 (часть VII, место 9).
+- `git cherry-pick`: только первая строка `[master <id7>] <сообщение>`. Git печатает ещё ` Date: <дата>` и диффстат (П8.4). Дата там — исходного коммита, а не текущая: в П8.10 cherry-pick, сделанный после коммита «Добавить README» (13:35) и тега (13:37), печатает ` Date: Mon Jun 1 13:33:00 2026 +0300`. Git сохраняет дату автора исходного коммита и поэтому показывает её. Это говорит речь тренажёра. Диффстат не печатается, как в разделах 2 и 5 (в разделе 5 — с пометкой на pull; часть VII, место 9).
 
 ## Расхождения со `spec.md`
 
@@ -2067,7 +2066,7 @@ HEAD is now at <id7> Базовая версия приложения
 - `git checkout <id7>` печатает тот же блок `Note:`, что `checkout <тег>`, с `Note: switching to '<id7>'.` (П8.19);
 - `git status` после `checkout --detach feature~1` → `HEAD detached at <id7>`; после `checkout <тег>` — `HEAD detached at <тег>` (П8.19);
 - `git branch` в отсоединённом HEAD первой строкой печатает `* (HEAD detached at <id7>)` или `* (HEAD detached at v1.0.0)`, потом ветки (П8.19);
-- `git commit -m` в отсоединённом HEAD → `[detached HEAD <id7>] <заголовок>`; диффстат не печатается, как везде. После коммита `git status` и `git branch` говорят `detached from`, а не `detached at` (П8.19);
+- `git commit -m` в отсоединённом HEAD → `[detached HEAD <id7>] <заголовок>`; диффстат не печатается, как везде, кроме pull в разделе 5. После коммита `git status` и `git branch` говорят `detached from`, а не `detached at` (П8.19);
 - `git checkout master` после такого коммита предупреждает (П8.19):
 
   ```
@@ -2624,7 +2623,7 @@ Unmerged paths:
 - **Сообщение без `-m`.** git открыл бы редактор с подготовленным сообщением: `Merge branch 'conflict-demo'`, `Merge branch 'master' of /team/origin`, `Revert "<тема>"` с пустой строкой и `This reverts commit <id>.`, тема копируемого коммита. Строки `# Conflicts:` — комментарии и в коммит не попадают (К1.4, К2.5: `git log -1`). Тренажёр делает коммит с подготовленным сообщением, а своей речью говорит, что git открыл бы редактор, — как revert в части VI, место 5. Правило раздела 1 «без `-m` коммита нет» здесь не действует: сообщение готово.
 - **`git commit -m` посреди revert и cherry-pick** завершает операцию со своим сообщением: у revert пропадает строка `This reverts commit …`, у cherry-pick — тема оригинала. После этого `--continue` отвечает `error: no cherry-pick or revert in progress` и `fatal: revert failed` / `fatal: cherry-pick failed`, код 128 (К8.1, К8.2).
 - **Коммит слияния** печатается без слова `Merge` в скобках: `[master 25bf369] Merge branch 'conflict-demo'` (К1.4). `source.html` печатает `[master Merge <id7>]`.
-- **Диффстат и строку ` Date:`** у revert, cherry-pick и rebase git печатает (К2.4, К5.4, К6.3, К8.2), тренажёр — нет, как везде (часть VII, место 9; часть X, «Автор и дата»).
+- **Диффстат и строку ` Date:`** у revert, cherry-pick и rebase git печатает (К2.4, К5.4, К6.3, К8.2), тренажёр — нет, как везде, кроме pull в разделе 5 (часть VII, место 9; часть X, «Автор и дата»).
 - **rebase: `git commit` после `git add`** разрешён: `[detached HEAD <id7>] <тема>`. Дальше `git status` пишет `You are currently editing a commit while rebasing branch 'feature' on '<id7>'.`, и `git rebase --continue` переносит остальное (К6.4).
 - **rebase: конфликт на последнем коммите.** `git rebase --continue` печатает `[detached HEAD <id7>] <тема>` и сразу `Successfully rebased and updated refs/heads/feature.` — без строки `Rebasing (k/n)` (К14.3).
 - **modify/delete.** «Удалено у них»: `git add` оставляет файл — `All conflicts fixed but you are still merging.` без раздела `Changes to be committed:`, коммит слияния, файл на месте (К9.1); `git rm` → `rm 'style.css'`, `D  style.css`, коммит слияния без файла (К9.2). «Удалено у нас»: `git add` → `A  style.css`, файл возвращается (К9.3); `git rm` → `git status --short` пуст (К9.3).
@@ -2998,7 +2997,7 @@ merge и pull: `error: Your local changes to the following files would be overwr
 | Перевод строки в конце файла не различается; git после `>>>>>>>` ставит его всегда (К1.1) | наследуется от `inspectDiff.ts`. «Оставить часть HEAD» даёт ровно файл HEAD — так git ведёт себя с файлами, у которых перевод строки есть (К17.1–К17.5); без него git дал бы лишний перевод строки (К17.6, К17.7) | — |
 | Вместо текстового редактора — кнопки выбора частей | подписаны как редактор, а не git; `git add` не делают | — |
 | Сообщение без `-m` — подготовленное, редактор не открывается | речь говорит, что git открыл бы редактор | — |
-| Диффстат и ` Date:` у revert, cherry-pick, rebase не печатаются | как во всех разделах | — |
+| Диффстат и ` Date:` у revert, cherry-pick, rebase не печатаются | как во всех разделах, кроме pull в разделе 5 | — |
 | Строки `Rebasing (k/n)` не печатаются | часть X, место 16 | — |
 | Сверен один блок меток на файл | в сценариях разделов других не бывает | этап ревью |
 
@@ -3321,7 +3320,7 @@ hint: If you want to detach HEAD at the commit, try again with the --detach opti
 
 | Команда | Что делает git | Вывод | Прогон |
 |---|---|---|---|
-| `git commit -m`, `-am` | новый коммит; двигается только HEAD | `[detached HEAD <id7>] <тема>`; диффстат тренажёр не печатает, как везде | О3, П8.19 |
+| `git commit -m`, `-am` | новый коммит; двигается только HEAD | `[detached HEAD <id7>] <тема>`; диффстат тренажёр не печатает, как везде, кроме pull в разделе 5 | О3, П8.19 |
 | `git cherry-pick <ссылка>` | копия поверх HEAD; двигается только HEAD | `[detached HEAD <id7>] <тема>`; ` Date:` и диффстат не печатаются (часть X, «Автор и дата») | О18 |
 | `git branch <имя> [<ссылка>]` | ветка на HEAD или на ссылке; HEAD остаётся отсоединённым | пусто | О3, О5 |
 | `git checkout -b <имя>`, `git switch -c <имя>` | ветка на HEAD и переход на неё; сделанные коммиты теперь на ветке | `Switched to a new branch '<имя>'` | О5 |

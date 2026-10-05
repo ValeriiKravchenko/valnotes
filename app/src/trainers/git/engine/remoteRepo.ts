@@ -24,8 +24,8 @@
 // git 2.53.0 (LC_ALL=C, без глобального конфига) во временном каталоге
 // 26.09.2026 (см. docs/git-trainer/reports/section5-git-runs.txt) — не по
 // памяти. Диффстат после fast-forward/слияния при pull НЕ печатается — то же
-// сознательное упрощение, что и в branchCommands.ts (target.md, часть VII,
-// опасное место 9: «Раздел 2 диффстат не печатает… Раздел 5 его наследует»).
+// сознательное упрощение, что и в branchCommands.ts; вместо него pull добавляет одну строку
+// тренажёра о пропуске (ru.remote.notes.pullStatOmitted; target.md, часть VII, опасное место 9).
 // ============================================================
 import type { LocalRepo, RemoteCommit, ServerState, FileTree } from './remoteTypes'
 import { mergeTrees, mergeFileContent, sameTree } from './branchRepo'

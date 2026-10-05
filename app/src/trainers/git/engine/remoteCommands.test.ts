@@ -305,10 +305,14 @@ describe('git pull — перемотка и "Already up to date." (target.md, �
     const { state: pulled, result } = run(state, 'git pull')
     expect(result.ok).toBe(true)
     // Fetch-часть печатается первой (опасное место 5: "если на сервере есть новое, pull печатает
-    // From ... и строки обновления origin/*"), затем сама интеграция — без диффстата (опасное
-    // место 9, раздел 5 наследует упрощение раздела 2).
-    expect(result.output).toMatch(/^From \/team\/origin\n {3}[0-9a-f]{7}\.\.[0-9a-f]{7} {2}master\s+-> origin\/master\nUpdating [0-9a-f]{7}\.\.[0-9a-f]{7}\nFast-forward$/)
+    // From ... и строки обновления origin/*"), затем сама интеграция — без диффстата, но с одной строкой
+    // тренажёра о его пропуске (опасное место 9).
+    expect(result.output).toMatch(/^From \/team\/origin\n {3}[0-9a-f]{7}\.\.[0-9a-f]{7} {2}master\s+-> origin\/master\nUpdating [0-9a-f]{7}\.\.[0-9a-f]{7}\nFast-forward\n/)
+    // После Fast-forward — ровно одна строка тренажёра о пропущенной статистике, самой статистики нет.
+    expect(result.output.endsWith(`\nFast-forward\n${ru.remote.notes.pullStatOmitted}`)).toBe(true)
     expect(result.output).not.toContain('file')
+    expect(result.output).not.toContain(' | ')
+    expect(result.output).not.toContain('files changed')
     expect(Object.keys(pulled.local!.commits).length).toBe(before + 1)
     expect(pulled.local!.working['CHANGELOG.md']).toBe('## Изменения\n- Правка коллеги №1')
   })
@@ -388,7 +392,9 @@ describe('расхождение веток и отказы push (target.md, ч�
     const { state, result } = run(before, 'git pull --no-rebase')
     expect(result.ok).toBe(true)
     // Fetch не делали ДО этого pull — его fetch-часть печатает "From ..." первой (опасное место 5).
-    expect(result.output.endsWith("Merge made by the 'ort' strategy.")).toBe(true)
+    expect(result.output.endsWith(`Merge made by the 'ort' strategy.\n${ru.remote.notes.pullStatOmitted}`)).toBe(true)
+    expect(result.output).not.toContain(' | ')
+    expect(result.output).not.toContain('files changed')
     expect(result.output.startsWith('From /team/origin\n')).toBe(true)
     expect(state.local!.working['README.md']).toContain('вторая правка')
     expect(state.local!.working['CHANGELOG.md']).toBe('## Изменения\n- Правка коллеги №1')
@@ -439,6 +445,44 @@ describe('расхождение веток и отказы push (target.md, ч�
   })
 })
 
+describe('git pull — строка тренажёра о пропущенной статистике (target.md, часть VII, опасное место 9)', () => {
+  const note = ru.remote.notes.pullStatOmitted
+  const noteLines = (output: string) => output.split('\n').filter((l) => l === note).length
+
+  it('перемотка, в том числе с --ff-only: ровно одна строка, последняя', () => {
+    const state = colleaguePush(clonedState(), ru.remote.seed.colleague)
+    for (const cmd of ['git pull', 'git pull --ff-only']) {
+      const { result } = run(state, cmd)
+      expect(result.exitCode).toBe(0)
+      expect(noteLines(result.output)).toBe(1)
+      expect(result.output.endsWith(`Fast-forward\n${note}`)).toBe(true)
+    }
+  })
+
+  it('слияние (--no-rebase на расхождении): ровно одна строка, после "Merge made"', () => {
+    const before = run(divergedScenario(), 'git push').state
+    const { result } = run(before, 'git pull --no-rebase')
+    expect(noteLines(result.output)).toBe(1)
+    expect(result.output.endsWith(`Merge made by the 'ort' strategy.\n${note}`)).toBe(true)
+  })
+
+  it('строки нет: "Already up to date.", отказы, fetch', () => {
+    const upToDate = [run(clonedState(), 'git pull'), run(clonedState(), 'git pull origin master')]
+    for (const { result } of upToDate) {
+      expect(result.output.endsWith('Already up to date.')).toBe(true)
+      expect(noteLines(result.output)).toBe(0)
+    }
+    const diverged = divergedScenario()
+    for (const cmd of ['git pull', 'git pull --ff-only']) {
+      const { result } = run(diverged, cmd)
+      expect(result.exitCode).toBe(128)
+      expect(result.output).not.toContain(note)
+    }
+    const { result: fetched } = run(colleaguePush(clonedState(), ru.remote.seed.colleague), 'git fetch')
+    expect(fetched.output).not.toContain(note)
+  })
+})
+
 describe('git config pull.rebase false / pull.ff only (target.md, часть VII, «Что входит»)', () => {
   it('git config pull.rebase false — молчит, код 0; дальше pull сливает без --no-rebase', () => {
     const before = run(divergedScenario(), 'git push').state
@@ -446,7 +490,9 @@ describe('git config pull.rebase false / pull.ff only (target.md, часть VII
     expect(configured.result.output).toBe('')
     expect(configured.result.exitCode).toBe(0)
     const { result } = run(configured.state, 'git pull')
-    expect(result.output.endsWith("Merge made by the 'ort' strategy.")).toBe(true)
+    expect(result.output.endsWith(`Merge made by the 'ort' strategy.\n${ru.remote.notes.pullStatOmitted}`)).toBe(true)
+    expect(result.output).not.toContain(' | ')
+    expect(result.output).not.toContain('files changed')
   })
 
   it('git config pull.ff only — на расхождении отдельный hint + fatal, код 128', () => {
@@ -484,7 +530,9 @@ describe('git config pull.rebase false / pull.ff only (target.md, часть VII
     const before = run(divergedScenario(), 'git push').state
     const configured = run(before, 'git config pull.ff only').state
     const { result } = run(configured, 'git pull --no-rebase')
-    expect(result.output.endsWith("Merge made by the 'ort' strategy.")).toBe(true)
+    expect(result.output.endsWith(`Merge made by the 'ort' strategy.\n${ru.remote.notes.pullStatOmitted}`)).toBe(true)
+    expect(result.output).not.toContain(' | ')
+    expect(result.output).not.toContain('files changed')
     expect(result.exitCode).toBe(0)
   })
 

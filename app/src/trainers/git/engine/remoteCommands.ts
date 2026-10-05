@@ -12,8 +12,9 @@
 // Строки вида "fatal: …", "error: …", usage-блоки — буквальный вывод,
 // сверенный напрямую запуском git 2.53.0 (LC_ALL=C, без глобального
 // конфига) во временном каталоге 26.09.2026, см. docs/git-trainer/reports/
-// section5-git-runs.txt — не по памяти. Диффстат НЕ печатается (см. шапку
-// remoteRepo.ts) — то же упрощение, что и в branchCommands.ts.
+// section5-git-runs.txt — не по памяти. Диффстат НЕ печатается (то же
+// упрощение, что и в branchCommands.ts), но на pull после перемотки и слияния добавляется одна
+// строка тренажёра о пропуске (ru.remote.notes.pullStatOmitted, см. integrationResultText).
 // ============================================================
 import type { CommandResult, FileTree, LocalRepo, RemoteCommit, RemoteState } from './remoteTypes'
 import {
@@ -577,12 +578,12 @@ function integrationResultText(state: RemoteState, outcome: ReturnType<typeof pu
   if (outcome.kind === 'fastForward') {
     const progress = state.rejectPullPushProgress === 'rejected' ? 'pulled' : state.rejectPullPushProgress
     const nextState: RemoteState = { ...state, local: outcome.local, rejectPullPushProgress: progress }
-    return ok(nextState, `Updating ${outcome.fromShort}..${outcome.toShort}\nFast-forward`)
+    return ok(nextState, [`Updating ${outcome.fromShort}..${outcome.toShort}`, 'Fast-forward', ru.remote.notes.pullStatOmitted].join('\n'))
   }
   if (outcome.kind === 'merged') {
     const progress = state.rejectPullPushProgress === 'rejected' ? 'pulled' : state.rejectPullPushProgress
     const nextState: RemoteState = { ...state, local: outcome.local, clock: outcome.clock, rejectPullPushProgress: progress }
-    return ok(nextState, "Merge made by the 'ort' strategy.")
+    return ok(nextState, ["Merge made by the 'ort' strategy.", ru.remote.notes.pullStatOmitted].join('\n'))
   }
   if (outcome.kind === 'conflict') {
     return fail(state, re.pullConflictOutOfScope(outcome.conflicts))

@@ -899,6 +899,10 @@ export const ru = {
    * литералом в remoteScope.ts/remoteCommands.ts (CLAUDE.md, «Вывод git-команд не переводится»).
    */
   remote: {
+    notes: {
+      /** target.md, часть VII, опасное место 9: после перемотки и слияния при pull git печатает диффстат, тренажёр — нет; эта строка говорит об этом. */
+      pullStatOmitted: `${TRAINER_MARKER} git в этом месте показал бы статистику изменений (какие файлы изменились и сколько строк), а тренажёр её опускает.`,
+    },
     errors: {
       /** target.md, часть III, правило 1, случай 2 — та же идея, что и be.commandOutOfScope раздела 2, со своим списком команд. */
       commandOutOfScope: (sub: string) =>
