@@ -23,6 +23,7 @@ import {
   commitTree,
   formatFetchUpdates,
   formatRemoteStatus,
+  isUpToDateWithUpstream,
   performClone,
   performFetch,
   pullIntegrate,
@@ -292,7 +293,8 @@ function handleStatus(state: RemoteState, args: string[]): { state: RemoteState;
     return fail(state, re.optionOutOfScope(`git status ${classified.resolved}`, STATUS_ALLOWED))
   }
   if (paths.length) return fail(state, re.optionOutOfScope(`git status ${paths.join(' ')}`, STATUS_ALLOWED))
-  return ok(state, formatRemoteStatus(state.local!))
+  const local = state.local!
+  return ok(state, formatRemoteStatus(local), isUpToDateWithUpstream(local) ? ru.remote.explain.upToDateNote : null)
 }
 
 // ---------- git config (только pull.rebase false / pull.ff only, target.md «Что входит») ----------
@@ -574,25 +576,26 @@ function mergeCommitMessage(branch: string): string {
  * ЕСТЕСТВЕННЫЙ ход миссии, см. замечания к миссиям), поэтому оба продвигают 'rejected' → 'pulled'.
  */
 function integrationResultText(state: RemoteState, outcome: ReturnType<typeof pullIntegrate>): { state: RemoteState; result: CommandResult } {
-  if (outcome.kind === 'upToDate') return ok(state, 'Already up to date.')
+  const rx = ru.remote.explain
+  if (outcome.kind === 'upToDate') return ok(state, 'Already up to date.', rx.pullIsFetchPlusIntegration)
   if (outcome.kind === 'fastForward') {
     const progress = state.rejectPullPushProgress === 'rejected' ? 'pulled' : state.rejectPullPushProgress
     const nextState: RemoteState = { ...state, local: outcome.local, rejectPullPushProgress: progress }
-    return ok(nextState, [`Updating ${outcome.fromShort}..${outcome.toShort}`, 'Fast-forward', ru.remote.notes.pullStatOmitted].join('\n'))
+    return ok(nextState, [`Updating ${outcome.fromShort}..${outcome.toShort}`, 'Fast-forward', ru.remote.notes.pullStatOmitted].join('\n'), rx.pullIsFetchPlusIntegration)
   }
   if (outcome.kind === 'merged') {
     const progress = state.rejectPullPushProgress === 'rejected' ? 'pulled' : state.rejectPullPushProgress
     const nextState: RemoteState = { ...state, local: outcome.local, clock: outcome.clock, rejectPullPushProgress: progress }
-    return ok(nextState, ["Merge made by the 'ort' strategy.", ru.remote.notes.pullStatOmitted].join('\n'))
+    return ok(nextState, ["Merge made by the 'ort' strategy.", ru.remote.notes.pullStatOmitted].join('\n'), rx.pullIsFetchPlusIntegration)
   }
   if (outcome.kind === 'conflict') {
     return fail(state, re.pullConflictOutOfScope(outcome.conflicts))
   }
   if (outcome.kind === 'ffOnlyRefused') {
-    return fail(state, PULL_FF_ONLY_DIVERGED_BLOCK, null, 128)
+    return fail(state, PULL_FF_ONLY_DIVERGED_BLOCK, `${rx.pullIsFetchPlusIntegration} ${rx.pullFfOnlyRefused}`, 128)
   }
   // outcome.kind === 'needsChoice'
-  return fail(state, PULL_DIVERGED_NEEDS_CHOICE_BLOCK, null, 128)
+  return fail(state, PULL_DIVERGED_NEEDS_CHOICE_BLOCK, `${rx.pullIsFetchPlusIntegration} ${rx.pullDivergedNoChoice} ${rx.pullNeedsChoice}`, 128)
 }
 
 /** Общее ядро pull ПОСЛЕ fetch-части: считает opts из флагов/настроек и вызывает pullIntegrate (remoteRepo.ts). branch — то, что интегрируем (текущая ветка при bare pull; явно указанная при `pull origin <ветка>`). */

@@ -510,7 +510,9 @@ function handleRevert(state: UndoState, args: string[]): { state: UndoState; res
     working,
     clock: state.clock + 1,
   }
-  return ok(nextState, `[${state.head} ${id.slice(0, 7)}] ${message}`, ru.undo.explain.revertSuccess)
+  // Без --no-edit настоящий git открыл бы редактор; в тренажёре его нет, и пояснение говорит об этом прямо.
+  const explanation = flags.includes('--no-edit') ? ru.undo.explain.revertSuccess : `${ru.undo.explain.revertSuccess} ${ru.undo.explain.revertEditorNote(message)}`
+  return ok(nextState, `[${state.head} ${id.slice(0, 7)}] ${message}`, explanation)
 }
 
 // ---------- диспетчер ----------

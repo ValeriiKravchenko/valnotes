@@ -31,6 +31,12 @@ export interface ShellToken {
    * в имени файла.
    */
   unsupportedGlob?: boolean
+  /**
+   * Слово набрано как голая незакавыченная "*": 'expanded' — шелл заменил её списком файлов,
+   * 'literal' — файлов для подстановки не нашлось, и git получил саму "*" как есть. Нужно
+   * пояснению к git add (target.md, A4): оно называет исполнителя раскрытия.
+   */
+  star?: 'expanded' | 'literal'
 }
 
 const WHITESPACE = /\s/
@@ -117,7 +123,8 @@ export function shellTokenize(input: string, workingFiles: string[]): ShellToken
     if (!w.quoted && w.text === '*') {
       const files = visibleFiles(workingFiles)
       const expanded = files.length ? files : ['*']
-      expanded.forEach((f) => tokens.push({ text: f, quoted: false }))
+      const star = files.length ? 'expanded' : 'literal'
+      expanded.forEach((f) => tokens.push({ text: f, quoted: false, star }))
     } else if (GLOB_CHARS.test(bare)) {
       tokens.push({ ...w, unsupportedGlob: true })
     } else {

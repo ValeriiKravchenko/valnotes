@@ -40,6 +40,7 @@ import { ambiguousOptionOutput } from './optionAbbrev'
 import type { ShellToken } from './shell'
 import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
+import { has } from './util'
 import { ru } from '../locales/ru'
 
 /**
@@ -150,11 +151,31 @@ function handleStatus(state: SectionState, flags: string[], paths: string[]): { 
  * `addContent` склоняется по числу файлов (один файл vs несколько за один `git add .`/`-A`) —
  * см. locales/ru.ts.
  */
-function explainAddResult(prevIndex: FileTree, nextIndex: FileTree): string {
-  const kind = describeAddOutcome(prevIndex, nextIndex)
-  if (kind === 'removal') return ru.explain.addRemoval
-  if (kind === 'mixed') return ru.explain.addMixed
-  return ru.explain.addContent(countCopiedContent(prevIndex, nextIndex))
+function explainAddResult(prev: SectionState, next: SectionState, star?: StarUse): string {
+  const kind = describeAddOutcome(prev.index, next.index)
+  const copied = countCopiedContent(prev.index, next.index)
+  const parts: string[] = []
+  if (kind === 'removal') parts.push(ru.explain.addRemoval)
+  else if (kind === 'mixed') parts.push(ru.explain.addMixed)
+  else if (copied === 0) parts.push(ru.explain.addNothingNew)
+  else parts.push(ru.explain.addContent(copied))
+  if (star?.mode === 'expanded') {
+    // «*» подставил шелл: скрытые файлы с отличиями и удалённые с диска файлы из индекса в список не попали.
+    // Списки строятся по индексу ПОСЛЕ команды: `git add * .` или `git add * .hidden` подготовили
+    // эти файлы явно, и «не добавлено» про них говорить нельзя (сверено на git 2.53.0).
+    parts.push(ru.explain.addStarExpanded(star.files))
+    const hidden = Object.keys(next.working)
+      .filter((f) => f.startsWith('.') && (!has(next.index, f) || next.index[f] !== next.working[f]))
+      .sort()
+    if (hidden.length) parts.push(ru.explain.addStarSkippedHidden(hidden))
+    const deleted = Object.keys(next.index)
+      .filter((f) => !has(next.working, f))
+      .sort()
+    if (deleted.length) parts.push(ru.explain.addStarSkippedDeleted(deleted))
+  } else if (star?.mode === 'literal') {
+    parts.push(ru.explain.addStarLiteral)
+  }
+  return parts.join(' ')
 }
 
 /**
@@ -186,7 +207,7 @@ function splitAddArgs(tokens: string[]): { flags: string[]; paths: string[] } {
  * спецсимвол, который остаётся на стороне git (это его собственный синтаксис pathspec,
  * а не что-то, что раскрывает шелл).
  */
-function handleAdd(state: SectionState, restTokens: string[]): { state: SectionState; result: CommandResult } {
+function handleAdd(state: SectionState, restTokens: string[], star?: StarUse): { state: SectionState; result: CommandResult } {
   // Буквальный вывод git (проверено на git 2.53.0, 20.09.2026), включая третью hint-строку про
   // advice.addEmptyPathspec — это не переменный текст (не зависит от ввода), поэтому
   // воспроизводится дословно целиком, а не документируется как упрощение.
@@ -226,11 +247,11 @@ function handleAdd(state: SectionState, restTokens: string[]): { state: SectionS
   }
   if (flags.length && !paths.length) {
     const next = addAllFiles(state)
-    return ok(next, '', explainAddResult(state.index, next.index))
+    return ok(next, '', explainAddResult(state, next, star))
   }
   if (paths.some((p) => p === '.')) {
     const next = addAllFiles(state)
-    return ok(next, '', explainAddResult(state.index, next.index))
+    return ok(next, '', explainAddResult(state, next, star))
   }
   // target.md, часть III, правило 1 (пункт 1): pathspec — glob git, а не шелла (git-add(1),
   // пример "git add Documentation/\*.txt"). Строка вроде "*.html", дошедшая до git буквально
@@ -247,7 +268,13 @@ function handleAdd(state: SectionState, restTokens: string[]): { state: SectionS
   const resolved = paths.map((p) => ({ pattern: p, matches: matchPathspec(p, candidates) }))
   const firstMissing = resolved.find((r) => r.matches.length === 0)
   if (firstMissing) {
-    return fail(state, `fatal: pathspec '${firstMissing.pattern}' did not match any files`, ru.explain.addPathspecNotFound)
+    // Голая «*», которую шелл оставил буквальной (файлов нет), для git — шаблон, а не имя файла.
+    const starNotMatched = star?.mode === 'literal' && firstMissing.pattern === '*'
+    return fail(
+      state,
+      `fatal: pathspec '${firstMissing.pattern}' did not match any files`,
+      starNotMatched ? ru.explain.addStarNoMatch : ru.explain.addPathspecNotFound,
+    )
   }
   let next = state
   const toAdd = new Set<string>()
@@ -255,7 +282,7 @@ function handleAdd(state: SectionState, restTokens: string[]): { state: SectionS
   toAdd.forEach((f) => {
     next = addSingleFile(next, f)
   })
-  return ok(next, '', explainAddResult(state.index, next.index))
+  return ok(next, '', explainAddResult(state, next, star))
 }
 
 // ---------- git commit ----------
@@ -482,6 +509,18 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
   return ok(outcome.state, outcome.output, ru.explain.commitSuccess)
 }
 
+/** Как шелл обошёлся с голой «*» в аргументах (shell.ts): подставил файлы (`files`) или оставил её для git. */
+interface StarUse {
+  mode: 'expanded' | 'literal'
+  files: string[]
+}
+
+function starUse(tokens: ShellToken[]): StarUse | undefined {
+  const expanded = tokens.filter((t) => t.star === 'expanded')
+  if (expanded.length) return { mode: 'expanded', files: [...new Set(expanded.map((t) => t.text))] }
+  return tokens.some((t) => t.star === 'literal') ? { mode: 'literal', files: [] } : undefined
+}
+
 // ---------- git init ----------
 
 function handleInit(state: SectionState, args: string[]): { state: SectionState; result: CommandResult } {
@@ -589,7 +628,7 @@ export function executeCommand(state: SectionState, rawInput: string): { state: 
       break
     }
     case 'add':
-      outcome = handleAdd(state, words.slice(2))
+      outcome = handleAdd(state, words.slice(2), starUse(tokens.slice(2)))
       break
     case 'commit':
       outcome = handleCommit(state, tokens.slice(2))

@@ -45,6 +45,7 @@ import {
 } from './searchScope'
 import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { diffBetween } from './inspectDiff'
+import { hunkFunctionContext } from './searchFunctionContext'
 import { ru } from '../locales/ru'
 
 const se = ru.searching.errors
@@ -185,7 +186,7 @@ function handleGrep(state: SearchState, tokens: string[], rawInput: string): { s
     } else if (isForeignArgument(token, SEARCH_REF_GRAMMAR)) {
       return fail(state, se.optionOutOfScope(`git grep ${positionals.join(' ')}`, GREP_ALLOWED))
     } else {
-      return fail(state, ambiguousArgument(token), null, 128)
+      return fail(state, ambiguousArgument(token), sx.unknownSecondWord(pattern, token), 128)
     }
   }
   // Формы путей после "--" (./x, ../x, глоб, магия pathspec) git принимает, раздел 6 не разбирает.
@@ -225,7 +226,10 @@ function handleGrep(state: SearchState, tokens: string[], rawInput: string): { s
     if (hasReadme4 && hasUtils5) nextState = { ...state, grepFoundDebounceScenario: true }
   }
 
-  const explanation = quotesExplanation(rawInput, pattern)
+  // Речь тренажёра: про кавычки (если применимо) и, когда совпадений нет, что это не ошибка (target.md, места 1 и 4).
+  const quotes = quotesExplanation(rawInput, pattern)
+  const noMatch = matches.length === 0 ? sx.noMatch(!flags.i && pattern !== pattern.toLowerCase()) : null
+  const explanation = [quotes, noMatch].filter((x): x is string => x !== null).join(' ') || null
   return ok(nextState, output, explanation, matches.length ? 0 : 1)
 }
 
@@ -359,7 +363,9 @@ function handleShow(state: SearchState, tokens: string[]): { state: SearchState;
   const line5Owner = computeBlame(state, currentTip(state), 'app.js').find((l) => l.line === 5)?.commitId
   const nextState = line5Owner !== undefined && id === line5Owner ? { ...state, shownDatasetCommit: true } : state
 
-  return ok(nextState, output)
+  // Заголовок @@ у тренажёра без строки-ориентира, которую печатает git (inspectDiff.ts, упрощение 4).
+  const context = diffText ? hunkFunctionContext(parentTree, diffText) : null
+  return ok(nextState, output, context ? sx.hunkFunctionContext(context.example) : null)
 }
 
 // ---------- git log ----------

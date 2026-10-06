@@ -234,6 +234,27 @@ function byFileName(a: RemoteFileStatusEntry, b: RemoteFileStatusEntry): number 
   return a.file < b.file ? -1 : a.file > b.file ? 1 : 0
 }
 
+/** Запись upstream текущей ветки: имя ветки на сервере и оба конца для сравнения; `null`, если слежения или записи нет. */
+function upstreamTips(local: LocalRepo): { upstreamName: string; localTip: string; remoteTip: string } | null {
+  const upstreamName = has(local.upstream, local.head) ? local.upstream[local.head] : undefined
+  if (upstreamName === undefined || !has(local.remoteBranches, upstreamName)) return null
+  return { upstreamName, localTip: local.branches[local.head], remoteTip: local.remoteBranches[upstreamName] }
+}
+
+/** Ветка совпадает с записью upstream (`origin/<ветка>`) — единственное место, где это условие записано. */
+function branchMatchesUpstreamRecord(tips: { localTip: string; remoteTip: string }): boolean {
+  return tips.localTip === tips.remoteTip
+}
+
+/**
+ * Текущая ветка следит за веткой сервера, и её запись `origin/<ветка>` указывает на тот же коммит —
+ * status напишет «up to date». Это сравнение с записью последнего контакта, а не с сервером.
+ */
+export function isUpToDateWithUpstream(local: LocalRepo): boolean {
+  const tips = upstreamTips(local)
+  return tips !== null && branchMatchesUpstreamRecord(tips)
+}
+
 /**
  * `On branch <head>` + строки про upstream (опасное место 1: «status сравнивает с origin/<ветка>,
  * то есть с записью, сделанной при последнем контакте», а не с текущим сервером) + обычный статус
@@ -243,19 +264,16 @@ function byFileName(a: RemoteFileStatusEntry, b: RemoteFileStatusEntry): number 
  */
 export function formatRemoteStatus(local: LocalRepo): string {
   const branch = local.head
-  const upstreamName = has(local.upstream, branch) ? local.upstream[branch] : undefined
+  const tips = upstreamTips(local)
   const upstreamLines: string[] = []
-  if (upstreamName !== undefined) {
-    const remoteRef = `origin/${upstreamName}`
-    const localTip = local.branches[branch]
-    const remoteTip = has(local.remoteBranches, upstreamName) ? local.remoteBranches[upstreamName] : undefined
-    if (remoteTip === undefined) {
-      // Защитный случай (не должен происходить: upstream ставится clone/push -u одновременно с
-      // remoteBranches) — веток без записи в remoteBranches при настроенном upstream не бывает.
-    } else if (localTip === remoteTip) {
+  // Без записи в remoteBranches при настроенном upstream строк про сервер нет (защитный случай:
+  // upstream ставится clone/push -u одновременно с remoteBranches).
+  if (tips !== null) {
+    const remoteRef = `origin/${tips.upstreamName}`
+    if (branchMatchesUpstreamRecord(tips)) {
       upstreamLines.push(`Your branch is up to date with '${remoteRef}'.`)
     } else {
-      const { ahead, behind } = aheadBehindCounts(local.commits, localTip, remoteTip)
+      const { ahead, behind } = aheadBehindCounts(local.commits, tips.localTip, tips.remoteTip)
       if (behind === 0) {
         upstreamLines.push(`Your branch is ahead of '${remoteRef}' by ${ahead} commit${ahead === 1 ? '' : 's'}.`)
         upstreamLines.push('  (use "git push" to publish your local commits)')
