@@ -65,7 +65,7 @@ describe('два слова без кавычек (место 3)', () => {
     expect(result.ok).toBe(false)
     expect(result.exitCode).toBe(128)
     expect(result.output).toContain("fatal: ambiguous argument 'function'")
-    expect(result.explanation).toBe(sx.unknownSecondWord('export', 'function'))
+    expect(result.explanation).toBe(sx.unknownSecondWord('export', 'function', '-n'))
     expect(result.explanation).toContain('шелл')
     expect(result.explanation).toContain("git grep -n 'export function'")
   })
@@ -77,7 +77,7 @@ describe('два слова без кавычек (место 3)', () => {
   })
 
   it('апостроф в словах: совет про кавычки не даётся (он был бы неверным)', () => {
-    const text = sx.unknownSecondWord("it's", 'x')
+    const text = sx.unknownSecondWord("it's", 'x', '-n')
     expect(text).not.toContain('git grep -n')
   })
 

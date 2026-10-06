@@ -58,7 +58,7 @@ import {
   BRANCH_DELETE_CURRENT_WORKTREE,
   REAL_GIT_COMMANDS,
 } from './remoteScope'
-import { classifySection2Option } from './branchScope'
+import { classifySection2Option, completionHelperMisuse, isSection2Command } from './branchScope'
 import { classifyPathspec, classifyPushRefspec, classifyRefToken, classifyRepositoryArgument, REMOTE_REF_GRAMMAR } from './outOfScopeForms'
 import type { ShellToken } from './shell'
 import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
@@ -67,6 +67,7 @@ import { has } from './util'
 import { ru } from '../locales/ru'
 
 const re = ru.remote.errors
+const rx = ru.remote.explain
 
 function ok(state: RemoteState, output: string, explanation: string | null = null, exitCode = 0): { state: RemoteState; result: CommandResult } {
   return { state, result: { ok: true, output, explanation, exitCode } }
@@ -563,6 +564,9 @@ function handlePush(state: RemoteState, args: string[]): { state: RemoteState; r
 
 // ---------- git pull ----------
 
+/** Имена, которые git отвергает как refspec («invalid refspec»): пробелы и управляющие, ~ ^ ? [ \ *, «..», «@{», «//», край «.» или «/», компонент с «.» впереди или «.lock» в конце. */
+// eslint-disable-next-line no-control-regex
+const INVALID_REF_NAME = /[\s~^?[\\*\x00-\x1f\x7f]|\.\.|@\{|\/\/|^[./]|[./]$|\/\.|\.lock(\/|$)/
 const PULL_ALLOWED = 'git pull, git pull origin <ветка>, git pull --no-rebase, git pull --ff-only'
 
 function mergeCommitMessage(branch: string): string {
@@ -576,7 +580,6 @@ function mergeCommitMessage(branch: string): string {
  * ЕСТЕСТВЕННЫЙ ход миссии, см. замечания к миссиям), поэтому оба продвигают 'rejected' → 'pulled'.
  */
 function integrationResultText(state: RemoteState, outcome: ReturnType<typeof pullIntegrate>): { state: RemoteState; result: CommandResult } {
-  const rx = ru.remote.explain
   if (outcome.kind === 'upToDate') return ok(state, 'Already up to date.', rx.pullIsFetchPlusIntegration)
   if (outcome.kind === 'fastForward') {
     const progress = state.rejectPullPushProgress === 'rejected' ? 'pulled' : state.rejectPullPushProgress
@@ -589,7 +592,7 @@ function integrationResultText(state: RemoteState, outcome: ReturnType<typeof pu
     return ok(nextState, ["Merge made by the 'ort' strategy.", ru.remote.notes.pullStatOmitted].join('\n'), rx.pullIsFetchPlusIntegration)
   }
   if (outcome.kind === 'conflict') {
-    return fail(state, re.pullConflictOutOfScope(outcome.conflicts))
+    return fail(state, re.pullConflictOutOfScope(outcome.conflicts), `${rx.pullIsFetchPlusIntegration} ${rx.pullConflictStopped}`)
   }
   if (outcome.kind === 'ffOnlyRefused') {
     return fail(state, PULL_FF_ONLY_DIVERGED_BLOCK, `${rx.pullIsFetchPlusIntegration} ${rx.pullFfOnlyRefused}`, 128)
@@ -660,7 +663,22 @@ function handlePull(state: RemoteState, args: string[]): { state: RemoteState; r
 
   const targetBranch = branchArg === 'HEAD' ? local.head : branchArg
   const { local: fetchedLocal, updates, notFound } = performFetch(local, state.server, targetBranch)
-  if (notFound) return fail(state, `fatal: couldn't find remote ref ${branchArg}`, null, 1)
+  if (notFound) {
+    // Имена вида heads/x, tags/x, refs/… git сопоставляет с полными именами ссылок на сервере (DWIM) и
+    // находит ветку, которой по точному имени нет; как именно — раздел 5 не воспроизводит: честный отказ.
+    // Сверено на git 2.53.0, 06.10.2026: pull origin heads/master — успех, origin/master — fatal.
+    if (/^(refs|heads|tags)\//.test(branchArg)) return fail(state, re.optionOutOfScope(`git pull origin ${branchArg}`, PULL_ALLOWED))
+    // Имя, нарушающее правила имён ссылок, git разбирает как refspec и отвечает «invalid refspec» (код 1),
+    // а не «couldn't find remote ref»; правила имён раздел не воспроизводит — честный отказ. Сверено на
+    // git 2.53.0, 06.10.2026: master/, /master, .master, master..x, master.lock, «a b», a^b, a?b, a*b, a@{b.
+    if (INVALID_REF_NAME.test(branchArg)) return fail(state, re.refnameShapeOutOfScope(`git pull origin ${branchArg}`, PULL_ALLOWED))
+    const otherCase = Object.keys(state.server.branches).find((b) => b.toLowerCase() === branchArg.toLowerCase()) ?? null
+    // Подсказка про «локальную запись» верна, только если такая запись у игрока есть: для
+    // origin/nosuch записи нет, и утверждать обратное нельзя.
+    const localCopy = branchArg.startsWith('origin/') && Object.hasOwn(local.remoteBranches, branchArg.slice('origin/'.length))
+    const hint = { localCopy, otherCase }
+    return fail(state, `fatal: couldn't find remote ref ${branchArg}`, rx.pullRemoteRefMissing(branchArg, hint), 1)
+  }
 
   const fetchLines = formatFetchUpdates(updates)
   const afterFetch: RemoteState = { ...state, local: fetchedLocal }
@@ -721,6 +739,11 @@ export function executeRemoteCommand(state: RemoteState, rawInput: string): { st
 
   if (!commandNeedsNoRepo(sub) && state.local === null) {
     return respond(fail(state, NOT_A_GIT_REPO, ru.explain.notAGitRepo, 128))
+  }
+
+  if (isSection2Command(sub)) {
+    const misuse = completionHelperMisuse(sub, words.slice(2))
+    if (misuse !== null) return respond(fail(state, misuse, null, 129))
   }
 
   let outcome: { state: RemoteState; result: CommandResult }

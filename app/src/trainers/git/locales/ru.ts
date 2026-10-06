@@ -95,6 +95,13 @@ export const ru = {
      */
     addStarNoMatch:
       'Здесь «*» — не имя файла, а шаблон «любые файлы». В рабочем дереве нет видимых файлов, поэтому шелл не нашёл, чем её заменить, и передал git как есть; git тоже не нашёл ни одного файла под этот шаблон и отказал. Сначала создай файл, потом повтори команду.',
+    /**
+     * «*» в кавычках: шелл её не раскрывал, git получил шаблон как есть и не нашёл под него ни одного
+     * файла (пустой репозиторий). Сверено на git 2.53.0, 06.10.2026: git add '*' → fatal: pathspec '*'
+     * did not match any files, код 128.
+     */
+    addQuotedStarNoMatch:
+      'Здесь «*» — не имя файла, а шаблон «любые файлы». Кавычки запретили шеллу её раскрывать, поэтому git получил «*» как есть и сам стал искать под неё файлы; ни одного не нашёл и отказал. Сначала создай файл, потом повтори команду.',
     addPathspecNotFound:
       'Git не нашёл такого файла. Имя должно совпадать с тем, что в списке «Файлы в рабочем дереве» — проверь его в git status.',
     commitSuccess:
@@ -181,6 +188,22 @@ export const ru = {
      */
     optionOutOfScope: (cmd: string, flag: string, allowed: readonly string[]) =>
       `${TRAINER_MARKER} git ${cmd} ${flag} — настоящая опция git, но раздел 1 её не разбирает. Здесь поддерживаются: ${allowed.join(', ')}.`,
+    /**
+     * `-h`/`--help` у status/add/commit: настоящий git печатает справку (usage с кодом 129 или
+     * man-страницу), раздел 1 справку не печатает — честный отказ, а не «unknown option».
+     * @param usage как это выглядело бы у настоящего git, например "git status -h"
+     * @param allowed что раздел 1 реально поддерживает для этой команды
+     */
+    helpOutOfScope: (usage: string, allowed: readonly string[]) =>
+      `${TRAINER_MARKER} ${usage} — настоящий git покажет справку. Раздел 1 справку не печатает. Здесь поддерживаются: ${allowed.join(', ')}.`,
+    /**
+     * `git <команда> --help -s` / `--help -h` до `git init`: опции после `--help` разбирает не команда, а
+     * `git help`, и git отвечает его ошибкой или usage (код 129), а не справкой по команде. Раздел 1 этого
+     * не печатает. Сверено на git 2.53.0, 06.10.2026.
+     * @param usage как это набрано, например "git status --help -s"
+     */
+    helpErrorOutOfScope: (usage: string, allowed: readonly string[]) =>
+      `${TRAINER_MARKER} ${usage} — после --help опции разбирает git help, и настоящий git ответит его ошибкой, а не справкой по команде. Раздел 1 этот ответ не печатает. Здесь поддерживаются: ${allowed.join(', ')}.`,
     /**
      * target.md, часть III, правило 1, случай 2: `git status <pathspec>` — настоящий git
      * фильтрует вывод status по путям (git-status(1)), но раздел 1 эту фильтрацию не
@@ -987,6 +1010,16 @@ export const ru = {
       /** `-h`/`--help` у add/commit/status/branch/checkout (classifySection2Option, branchScope.ts). */
       helpOutOfScope: (usage: string, allowed: string) =>
         `${TRAINER_MARKER} ${usage} — настоящий git покажет справку. Этот раздел тренажёра справку не печатает. Здесь поддерживается: ${allowed}.`,
+      /**
+       * `git pull origin <имя>`, где имя нарушает правила имён ссылок (`master/`, `/master`, `.master`,
+       * `master..x`, `master.lock`, пробел и т. п.): git разбирает его как refspec и отвечает своей ошибкой
+       * формата имени («invalid refspec», код 1), а не «couldn't find remote ref». Раздел 5 правила имён не
+       * воспроизводит — честный отказ. Сверено на git 2.53.0, 06.10.2026.
+       * @param usage как это набрано, например "git pull origin master/"
+       * @param allowed что раздел умеет вместо этого
+       */
+      refnameShapeOutOfScope: (usage: string, allowed: string) =>
+        `${TRAINER_MARKER} ${usage} — имя ветки нарушает правила имён ссылок git, и настоящий git ответит своей ошибкой формата имени. Раздел 5 эти правила не воспроизводит. Здесь поддерживается: ${allowed}.`,
       /** Неоднозначное сокращение длинной опции у add/commit/status/branch/checkout. */
       ambiguousAbbreviationOutOfScope: (usage: string, allowed: string) =>
         `${TRAINER_MARKER} ${usage} — неоднозначное сокращение опции. Этот раздел тренажёра не разбирает, какую опцию ты имел в виду — впиши имя опции полностью. Здесь поддерживается: ${allowed}.`,
@@ -1034,6 +1067,29 @@ export const ru = {
       pullDivergedNoChoice: 'Ветки разошлись, а способ их соединить не выбран: современный git (2.53) сам его не выбирает и просит указать явно.',
       /** Отказ --ff-only (или pull.ff only): режим выбран, git отказывает по нему и ничего не просит указать. */
       pullFfOnlyRefused: 'Ветки разошлись, а режим «только перемотка» (--ff-only или pull.ff only) не допускает ничего другого, поэтому git отказал. Fetch при этом уже выполнен: origin/<ветка> отражает состояние сервера.',
+      /**
+       * Конфликт при pull: тренажёр слияние не начинает (правило области). Fetch-часть при этом выполнена,
+       * ветка и файлы не тронуты. Сверено на git 2.53.0, 06.10.2026: настоящий git после fetch начинает
+       * слияние и останавливается («CONFLICT (content): Merge conflict in …», «Automatic merge failed»).
+       */
+      pullConflictStopped:
+        'Fetch-часть pull выполнена: origin/<ветка> отражает состояние сервера (верно и после предварительного git fetch, и без него). Затем настоящий git начал бы слияние и остановился на конфликте; тренажёр слияние не начинает, поэтому твоя ветка и файлы остались как были.',
+      /**
+       * `git pull origin <ветка>`, а такой ветки на сервере нет: fetch-часть отказывает, до слияния дело
+       * не доходит. Сверено на git 2.53.0, 06.10.2026: git pull origin nosuch, git pull origin Master
+       * (на сервере master) и git pull origin origin/master — все «fatal: couldn't find remote ref …», код 1.
+       * @param branch имя ветки, как набрал игрок
+       * @param hint что известно о причине: имя вида origin/<ветка> (локальная запись, а не ветка сервера)
+       *   и/или ветка сервера, которая отличается от набранного только регистром
+       */
+      pullRemoteRefMissing: (branch: string, hint: { localCopy: boolean; otherCase: string | null }) =>
+        [
+          `Fetch-часть pull не нашла на сервере origin ветку «${branch}», поэтому до слияния дело не дошло и ничего не изменилось.`,
+          hint.localCopy ? `«${branch}» — это локальная запись о ветке сервера, а на самом сервере ветка называется без «origin/»: git pull origin <ветка>.` : '',
+          hint.otherCase !== null ? `Регистр имени важен: «${branch}» и «${hint.otherCase}» для git разные ветки.` : '',
+        ]
+          .filter((part) => part !== '')
+          .join(' '),
       /** Подсказка к отказу pull на расхождении — куда смотреть. */
       pullNeedsChoice: 'Для этой миссии подходит слияние: git pull --no-rebase (или один раз git config pull.rebase false — тогда обычный git pull будет сливать).',
     },
@@ -1202,15 +1258,21 @@ export const ru = {
         `${TRAINER_MARKER} совпадений нет: когда git grep ничего не находит, он не печатает ни строки и завершается с кодом 1 — это не ошибка, а ответ «такого нет».${caseHint ? ' В шаблоне есть заглавные буквы, а без -i git различает регистр: попробуй добавить -i.' : ''}`,
       /**
        * target.md, опасное место 3: лишнее слово после шаблона git пробует понять как ревизию или путь
-       * (сверено на git 2.53.0: fatal: ambiguous argument, код 128). Слово могло быть и намеренным
-       * именем файла, поэтому текст не утверждает, что это обрывок фразы.
+       * (сверено на git 2.53.0: без «--» fatal: ambiguous argument, с «--» fatal: unable to resolve
+       * revision, код 128 в обоих случаях). Слово могло быть и намеренным именем файла, поэтому текст
+       * не утверждает, что это обрывок фразы.
        * @param pattern первое слово — шаблон
        * @param word второе слово, которое git не нашёл ни как ревизию, ни как путь
+       * @param flags флаги так, как их набрал игрок (например «-n» или «-n -i»); пусто, если флагов не было —
+       *   совет повторяет форму его команды, а не навязывает -n
+       * @param afterSeparator в команде есть «--»: слово до него git понимает только как ревизию
        */
-      unknownSecondWord: (pattern: string, word: string) => {
+      unknownSecondWord: (pattern: string, word: string, flags: string, afterSeparator = false) => {
         const phrase = `${pattern} ${word}`
-        const advice = phrase.includes("'") ? '' : ` Если «${phrase}» — одна фраза, возьми её в одинарные кавычки: git grep -n '${phrase}'.`
-        return `${TRAINER_MARKER} git получил шаблон «${pattern}» и отдельный аргумент «${word}»: шелл делит строку на слова по пробелам, а слово после шаблона git пробует понять как ревизию или путь — и не находит ни того, ни другого.${advice}`
+        const command = flags === '' ? 'git grep' : `git grep ${flags}`
+        const advice = phrase.includes("'") ? '' : ` Если «${phrase}» — одна фраза, возьми её в одинарные кавычки: ${command} '${phrase}'.`
+        const how = afterSeparator ? 'слово после шаблона до «--» git понимает как ревизию — и не находит такой' : 'слово после шаблона git пробует понять как ревизию или путь — и не находит ни того, ни другого'
+        return `${TRAINER_MARKER} git получил шаблон «${pattern}» и отдельный аргумент «${word}»: шелл делит строку на слова по пробелам, а ${how}.${advice}`
       },
       /**
        * Заголовок @@ в git show: у настоящего git после номеров строк идёт строка-ориентир — ближайшая

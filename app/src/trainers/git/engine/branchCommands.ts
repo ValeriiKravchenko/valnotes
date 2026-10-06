@@ -39,7 +39,7 @@ import {
   sameTree,
 } from './branchRepo'
 import type { SafetyBlock } from './branchRepo'
-import { classifySection2Option, gitNotACommand, isGlobalGitOption, isSection2Command, REAL_GIT_COMMANDS } from './branchScope'
+import { classifySection2Option, completionHelperMisuse, gitNotACommand, isGlobalGitOption, isSection2Command, REAL_GIT_COMMANDS } from './branchScope'
 import type { ShellToken } from './shell'
 import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { applyStageAll, buildCommitMessage, classifyCommitFlagToken, type CommitMessagePart } from './commitFlags'
@@ -1025,6 +1025,9 @@ export function executeBranchingCommand(state: BranchingState, rawInput: string)
     if (REAL_GIT_COMMANDS.has(sub)) return respond(fail(state, be.commandOutOfScope(sub), null))
     return respond(fail(state, gitNotACommand(sub), null))
   }
+
+  const misuse = completionHelperMisuse(sub, words.slice(2))
+  if (misuse !== null) return respond(fail(state, misuse, null))
 
   let outcome: { state: BranchingState; result: CommandResult }
   switch (sub) {

@@ -63,6 +63,11 @@ function ambiguousArgument(token: string): string {
   return `fatal: ambiguous argument '${token}': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'`
 }
 
+/** Буквальный текст настоящего git, когда слово после шаблона стоит перед «--» и не ревизия (сверено на git 2.53.0, 06.10.2026: даже если слово — существующий файл). */
+function unableToResolveRevision(token: string): string {
+  return `fatal: unable to resolve revision: ${token}`
+}
+
 /**
  * Позиционный аргумент, который git принимает, а раздел 6 не разбирает: выражение ревизии вне
  * грамматики раздела (`HEAD@{0}`, `HEAD^2`, `ревизия:путь`, `..`) или форма пути (`./x`, `../x`,
@@ -142,9 +147,20 @@ function quotesExplanation(rawInput: string, pattern: string): string | null {
 }
 
 function handleGrep(state: SearchState, tokens: string[], rawInput: string): { state: SearchState; result: CommandResult } {
-  const sepIdx = tokens.indexOf('--')
-  const preTokens = sepIdx === -1 ? tokens : tokens.slice(0, sepIdx)
-  const pathTokens = sepIdx === -1 ? [] : tokens.slice(sepIdx + 1)
+  let sepIdx = tokens.indexOf('--')
+  let preTokens = sepIdx === -1 ? tokens : tokens.slice(0, sepIdx)
+  let pathTokens = sepIdx === -1 ? [] : tokens.slice(sepIdx + 1)
+  // «--» без шаблона до него (`git grep -- debounce utils.js`): git его не считает разделителем, шаблоном
+  // становится первое слово после «--», а остальные слова разбираются как без «--» (ревизия или путь).
+  // Сверено на git 2.53.0, 06.10.2026. Слово с «-» впереди после такого «--» раздел 6 не разбирает.
+  if (sepIdx !== -1 && !preTokens.some((t) => !(t.startsWith('-') && t !== '-'))) {
+    if (pathTokens.some((t) => t.startsWith('-') && t !== '-')) {
+      return fail(state, se.optionOutOfScope(`git grep ${tokens.join(' ')}`, GREP_ALLOWED))
+    }
+    preTokens = [...preTokens, ...pathTokens]
+    pathTokens = []
+    sepIdx = -1
+  }
 
   const flags: GrepFlags = { n: false, i: false, l: false, c: false, w: false, F: false }
   const positionals: string[] = []
@@ -181,12 +197,14 @@ function handleGrep(state: SearchState, tokens: string[], rawInput: string): { s
     if (resolved !== null) {
       refToken = token
       refId = resolved
-    } else if (pathTokens.length === 0 && isTrackedIn(workingTree, token)) {
+    } else if (sepIdx === -1 && isTrackedIn(workingTree, token)) {
       barePathFilter = token
     } else if (isForeignArgument(token, SEARCH_REF_GRAMMAR)) {
       return fail(state, se.optionOutOfScope(`git grep ${positionals.join(' ')}`, GREP_ALLOWED))
     } else {
-      return fail(state, ambiguousArgument(token), sx.unknownSecondWord(pattern, token), 128)
+      const typedFlags = preTokens.filter((t) => t.startsWith('-') && t !== '-').join(' ')
+      const output = sepIdx === -1 ? ambiguousArgument(token) : unableToResolveRevision(token)
+      return fail(state, output, sx.unknownSecondWord(pattern, token, typedFlags, sepIdx !== -1), 128)
     }
   }
   // Формы путей после "--" (./x, ../x, глоб, магия pathspec) git принимает, раздел 6 не разбирает.

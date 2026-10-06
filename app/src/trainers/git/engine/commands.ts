@@ -34,7 +34,7 @@ import {
   sameTree,
   statusTailKind,
 } from './repo'
-import { classifyInitArguments, classifyPathspec } from './outOfScopeForms'
+import { classifyInitArguments, classifyPathspec, findUnknownInitOption } from './outOfScopeForms'
 import { classifyOption, describedScope, isGlobalGitOption, isSectionCommand, REAL_GIT_COMMANDS, splitShortOptionCluster } from './scope'
 import { ambiguousOptionOutput } from './optionAbbrev'
 import type { ShellToken } from './shell'
@@ -66,8 +66,35 @@ function splitArgs(list: string[]): { flags: string[]; args: string[] } {
 function ok(state: SectionState, output: string, explanation: string | null = null): { state: SectionState; result: CommandResult } {
   return { state, result: { ok: true, output, explanation } }
 }
-function fail(state: SectionState, output: string, explanation: string | null = null): { state: SectionState; result: CommandResult } {
-  return { state, result: { ok: false, output, explanation } }
+/**
+ * Справка до `git init` у status/add/commit — отказ области («git покажет справку, раздел не
+ * печатает») с кодом, который у настоящего git проверен прогоном вне репозитория (git 2.53.0,
+ * 06.10.2026): `-h` и `--help-all` единственным аргументом — usage, 129; `--help` первым — man-страница, 0.
+ * Дальше `--help` разбирает `git help`, слева направо: `--` обрывает разбор (0), `-h` и `-s` — ошибка
+ * или usage `git help` (129, это не справка по команде: `kind: 'helpError'`), любая другая опция
+ * (`-v`, `-a`, `-w`, …) зависит от окружения, и код не задаётся. Остальные формы справкой не считаются (null).
+ */
+function preInitHelpForm(args: string[]): { exitCode: number | undefined; kind: 'help' | 'helpError' } | null {
+  if (args.length === 1 && (args[0] === '-h' || args[0] === '--help-all')) return { exitCode: 129, kind: 'help' }
+  if (args[0] !== '--help') return null
+  for (const arg of args.slice(1)) {
+    if (arg === '--') break
+    if (arg === '-h' || arg === '-s') return { exitCode: 129, kind: 'helpError' }
+    if (arg.startsWith('-') && arg !== '-') return { exitCode: undefined, kind: 'help' }
+  }
+  return { exitCode: 0, kind: 'help' }
+}
+
+/**
+ * Отказ. `exitCode` — код возврата настоящего git там, где он проверен прогоном (git 2.53.0,
+ * 06.10.2026): ошибки git — «not a git repository», «pathspec … did not match any files», «paths …
+ * with -a does not make sense» — 128; неизвестная/неоднозначная опция, `-m` без значения — 129;
+ * usage без подкоманды, неизвестная подкоманда, «nothing to commit», пустое сообщение, неизвестный
+ * pathspec у commit — 1. Честные отказы области («настоящий git это умеет, раздел не разбирает») кода
+ * не имеют, кроме справки до `git init` (см. preInitHelpForm): её формы сверены с кодами вне репозитория.
+ */
+function fail(state: SectionState, output: string, explanation: string | null = null, exitCode?: number): { state: SectionState; result: CommandResult } {
+  return { state, result: { ok: false, output, explanation, exitCode } }
 }
 
 /**
@@ -122,14 +149,17 @@ function handleStatus(state: SectionState, flags: string[], paths: string[]): { 
   for (const f of expanded) {
     const cls = classifyOption('status', f)
     if (cls.kind === 'ambiguous') {
-      return fail(state, ambiguousOptionOutput(f, cls.candidates ?? []), null)
+      return fail(state, ambiguousOptionOutput(f, cls.candidates ?? []), null, 129)
     }
     if (cls.kind === 'unknown') {
       // Расхождение B1: значение после "=" остаётся в тексте ошибки, git его не отрезает
       // (сверено на git 2.53.0, 24.09.2026: `git status --bogus=1` → "unknown option `bogus=1'").
       const long = f.startsWith('--')
       const name = f.replace(/^-+/, '')
-      return fail(state, `error: unknown ${long ? 'option' : 'switch'} \`${name}'`, null)
+      return fail(state, `error: unknown ${long ? 'option' : 'switch'} \`${name}'`, null, 129)
+    }
+    if (cls.kind === 'help') {
+      return fail(state, ru.errors.helpOutOfScope(`git status ${f}`, describedScope('status')), null)
     }
     if (cls.kind === 'outOfScope') {
       return fail(state, ru.errors.optionOutOfScope('status', cls.resolved, describedScope('status')), null)
@@ -233,13 +263,16 @@ function handleAdd(state: SectionState, restTokens: string[], star?: StarUse): {
   for (const f of flags) {
     const cls = classifyOption('add', f)
     if (cls.kind === 'ambiguous') {
-      return fail(state, ambiguousOptionOutput(f, cls.candidates ?? []), null)
+      return fail(state, ambiguousOptionOutput(f, cls.candidates ?? []), null, 129)
     }
     if (cls.kind === 'unknown') {
       // Расхождение B1, тот же текст, что и в handleStatus выше.
       const long = f.startsWith('--')
       const name = f.replace(/^-+/, '')
-      return fail(state, `error: unknown ${long ? 'option' : 'switch'} \`${name}'`, null)
+      return fail(state, `error: unknown ${long ? 'option' : 'switch'} \`${name}'`, null, 129)
+    }
+    if (cls.kind === 'help') {
+      return fail(state, ru.errors.helpOutOfScope(`git add ${f}`, describedScope('add')), null)
     }
     if (cls.kind === 'outOfScope') {
       return fail(state, ru.errors.optionOutOfScope('add', cls.resolved, describedScope('add')), null)
@@ -269,11 +302,18 @@ function handleAdd(state: SectionState, restTokens: string[], star?: StarUse): {
   const firstMissing = resolved.find((r) => r.matches.length === 0)
   if (firstMissing) {
     // Голая «*», которую шелл оставил буквальной (файлов нет), для git — шаблон, а не имя файла.
-    const starNotMatched = star?.mode === 'literal' && firstMissing.pattern === '*'
+    const bareStar = firstMissing.pattern === '*'
+    const explanation =
+      bareStar && star?.mode === 'literal'
+        ? ru.explain.addStarNoMatch
+        : bareStar && star?.mode === 'quoted'
+          ? ru.explain.addQuotedStarNoMatch
+          : ru.explain.addPathspecNotFound
     return fail(
       state,
       `fatal: pathspec '${firstMissing.pattern}' did not match any files`,
-      starNotMatched ? ru.explain.addStarNoMatch : ru.explain.addPathspecNotFound,
+      explanation,
+      128,
     )
   }
   let next = state
@@ -311,7 +351,10 @@ interface ParsedCommitArgs {
 function commitOptionError(flag: string): CommandResult {
   const cls = classifyOption('commit', flag)
   if (cls.kind === 'ambiguous') {
-    return { ok: false, output: ambiguousOptionOutput(flag, cls.candidates ?? []), explanation: null }
+    return { ok: false, output: ambiguousOptionOutput(flag, cls.candidates ?? []), explanation: null, exitCode: 129 }
+  }
+  if (cls.kind === 'help') {
+    return { ok: false, output: ru.errors.helpOutOfScope(`git commit ${flag}`, describedScope('commit')), explanation: null }
   }
   if (cls.kind === 'outOfScope') {
     return { ok: false, output: ru.errors.optionOutOfScope('commit', cls.resolved, describedScope('commit')), explanation: null }
@@ -319,7 +362,7 @@ function commitOptionError(flag: string): CommandResult {
   // Расхождение B1, тот же текст, что и в handleStatus/handleAdd выше.
   const long = flag.startsWith('--')
   const name = flag.replace(/^-+/, '')
-  return { ok: false, output: `error: unknown ${long ? 'option' : 'switch'} \`${name}'`, explanation: null }
+  return { ok: false, output: `error: unknown ${long ? 'option' : 'switch'} \`${name}'`, explanation: null, exitCode: 129 }
 }
 
 /**
@@ -361,7 +404,7 @@ function parseCommitArgs(args: ShellToken[]): { error: CommandResult } | { parse
         messages.push(outcome.message)
       } else if (outcome.needsMessageFromNextToken) {
         if (i + 1 >= args.length) {
-          return { error: { ok: false, output: "error: switch `m' requires a value", explanation: null } }
+          return { error: { ok: false, output: "error: switch `m' requires a value", explanation: null, exitCode: 129 } }
         }
         const valueTok = args[++i]
         messages.push({ value: valueTok.text, quoted: valueTok.quoted })
@@ -410,7 +453,7 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
       // Реальный git отказывает раньше, чем проверяет сами пути, и делает это независимо
       // от того, существуют ли они (проверено на git 2.43+: git commit -a -m "x" <pathspec>
       // → "fatal: paths '<первый путь> ...' with -a does not make sense", код 128).
-      return fail(state, `fatal: paths '${paths[0].value} ...' with -a does not make sense`, null)
+      return fail(state, `fatal: paths '${paths[0].value} ...' with -a does not make sense`, null, 128)
     }
     // target.md, A12: pathspec проверяется по известности GIT — объединению путей из индекса и HEAD, — а НЕ
     // по наличию на диске (working tree в это множество кандидатов не входит: commit имеет
@@ -430,7 +473,7 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
 
     if (bad.length) {
       const output = bad.map((r) => `error: pathspec '${r.value}' did not match any file(s) known to git`).join('\n')
-      return fail(state, output, suspect ? ru.explain.commitQuotesPathspec : null)
+      return fail(state, output, suspect ? ru.explain.commitQuotesPathspec : null, 1)
     }
 
     // Раскрытые pathspec в конкретные имена файлов (порядок — порядок паттернов, без
@@ -455,7 +498,7 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
           ? ru.explain.commitAccidentalPathspec(message, matchedFiles)
           : ru.explain.commitExplicitPathspec(message, matchedFiles)
         : null
-      return { state: outcome.state, result: { ok: outcome.ok, output: outcome.output, explanation } }
+      return { state: outcome.state, result: { ok: outcome.ok, output: outcome.output, explanation, exitCode: outcome.ok ? undefined : 1 } }
     }
 
     // message === null (нет -m): настоящий git commit <pathspec> без -m открыл бы текстовый
@@ -486,7 +529,7 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
           : kind === 'clean'
             ? ru.explain.commitClean
             : null
-    return fail(state, formatStatusFriendly(state), explanation)
+    return fail(state, formatStatusFriendly(state), explanation, 1)
   }
 
   if (message === null) {
@@ -494,7 +537,7 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
     // редактор закрыть, не оставив сообщения (а в песочнице сообщение взять неоткуда —
     // редактора нет), git печатает ровно эту строку, буквально и по-английски (проверено
     // напрямую: GIT_EDITOR=true git commit → "Aborting commit due to empty commit message.").
-    return fail(state, 'Aborting commit due to empty commit message.', ru.explain.commitAborting)
+    return fail(state, 'Aborting commit due to empty commit message.', ru.explain.commitAborting, 1)
   }
 
   const staged = { ...state, index: nextIndex }
@@ -504,26 +547,60 @@ function handleCommit(state: SectionState, restTokens: ShellToken[]): { state: S
     // но пустое (никакого редактора git тут не открывает — сообщение уже дано); либо (защитный,
     // на практике недостижимый при уже пройденной проверке sameTree выше) случай "нечего коммитить".
     const explanation = /clean$/.test(outcome.output) ? ru.explain.commitClean : ru.explain.commitAbortingEmptyMessage
-    return fail(state, outcome.output, explanation)
+    return fail(state, outcome.output, explanation, 1)
   }
   return ok(outcome.state, outcome.output, ru.explain.commitSuccess)
 }
 
 /** Как шелл обошёлся с голой «*» в аргументах (shell.ts): подставил файлы (`files`) или оставил её для git. */
 interface StarUse {
-  mode: 'expanded' | 'literal'
+  mode: 'expanded' | 'literal' | 'quoted'
   files: string[]
 }
 
 function starUse(tokens: ShellToken[]): StarUse | undefined {
   const expanded = tokens.filter((t) => t.star === 'expanded')
   if (expanded.length) return { mode: 'expanded', files: [...new Set(expanded.map((t) => t.text))] }
-  return tokens.some((t) => t.star === 'literal') ? { mode: 'literal', files: [] } : undefined
+  if (tokens.some((t) => t.star === 'literal')) return { mode: 'literal', files: [] }
+  // «*» в кавычках: шелл её не раскрывает, git получает шаблон сам.
+  return tokens.some((t) => t.quoted && t.text === '*') ? { mode: 'quoted', files: [] } : undefined
 }
 
 // ---------- git init ----------
 
+/**
+ * Справка git init, которую git печатает после ошибки разбора опции (stderr, код 129), буквально.
+ * Сверено на git 2.53.0, 06.10.2026 (вывод заканчивается ровно одной пустой строкой: `use\n\n`); в других версиях набор опций в списке может отличаться.
+ */
+const INIT_USAGE = [
+  'usage: git init [-q | --quiet] [--bare] [--template=<template-directory>]',
+  '                [--separate-git-dir <git-dir>] [--object-format=<format>]',
+  '                [--ref-format=<format>]',
+  '                [-b <branch-name> | --initial-branch=<branch-name>]',
+  '                [--shared[=<permissions>]] [<directory>]',
+  '',
+  '    --[no-]template <template-directory>',
+  '                          directory from which templates will be used',
+  '    --[no-]bare           create a bare repository',
+  '    --shared[=<permissions>]',
+  '                          specify that the git repository is to be shared amongst several users',
+  '    -q, --[no-]quiet      be quiet',
+  '    --[no-]separate-git-dir <gitdir>',
+  '                          separate git dir from working tree',
+  '    -b, --[no-]initial-branch <name>',
+  '                          override the name of the initial branch',
+  '    --[no-]object-format <hash>',
+  '                          specify the hash algorithm to use',
+  '    --[no-]ref-format <format>',
+  '                          specify the reference format to use',
+  '',
+  '',
+].join('\n')
+
 function handleInit(state: SectionState, args: string[]): { state: SectionState; result: CommandResult } {
+  // Заведомо несуществующая опция — настоящая ошибка git (с usage, код 129), а не отказ «вне раздела».
+  const unknownOption = findUnknownInitOption(args)
+  if (unknownOption !== null) return fail(state, `${unknownOption}\n${INIT_USAGE}`, null, 129)
   // target.md, часть III, правило 1: git init принимает папку, -b, --bare, -q и т.д., раздел 1 — нет.
   if (classifyInitArguments(args) === 'foreign') {
     return fail(state, ru.errors.initArgumentsOutOfScope(`git init ${args.join(' ')}`), null)
@@ -584,7 +661,7 @@ export function executeCommand(state: SectionState, rawInput: string): { state: 
   const sub = words[1]
   if (sub === undefined) {
     // B2: настоящий git без аргументов завершается отказом (usage, код возврата 1).
-    const r = fail(state, ru.errors.gitUsageNoArgs, null)
+    const r = fail(state, ru.errors.gitUsageNoArgs, null, 1)
     return { state: appendCommand(state, rawInput, r.result), result: r.result }
   }
   // target.md, часть III, правило 1 (пункт 3): опции самого git ДО имени подкоманды
@@ -606,14 +683,27 @@ export function executeCommand(state: SectionState, rawInput: string): { state: 
       const r = fail(state, ru.errors.commandOutOfScope(sub), null)
       return { state: appendCommand(state, rawInput, r.result), result: r.result }
     }
-    const r = fail(state, gitNotACommand(sub), null)
+    const r = fail(state, gitNotACommand(sub), null, 1)
     return { state: appendCommand(state, rawInput, r.result), result: r.result }
   }
 
   // С этой точки sub — гарантированно одна из SECTION_SCOPE.commands (init/status/add/commit).
   // Это единственные команды раздела 1, которым вообще нужен репозиторий (кроме init).
   if (sub !== 'init' && !state.initialized) {
-    const r = fail(state, 'fatal: not a git repository (or any of the parent directories): .git', ru.explain.notAGitRepo)
+    // Без репозитория git отвечает справкой, только если `-h` (или `--help-all`) — единственный
+    // аргумент, либо `--help` — первый (сверено на git 2.53.0, 06.10.2026). Любая другая форма
+    // (`status -s -h`, `add x -h`, `commit -hZ`, `--git-completion-helper`, …) — обычное
+    // «not a git repository». Справку тренажёр не печатает: честный отказ области с кодом git.
+    const helpForm = preInitHelpForm(words.slice(2))
+    if (helpForm !== null) {
+      const output =
+        helpForm.kind === 'helpError'
+          ? ru.errors.helpErrorOutOfScope(`git ${sub} ${words.slice(2).join(' ')}`, describedScope(sub))
+          : ru.errors.helpOutOfScope(`git ${sub} ${words[2]}`, describedScope(sub))
+      const r = fail(state, output, null, helpForm.exitCode)
+      return { state: appendCommand(state, rawInput, r.result), result: r.result }
+    }
+    const r = fail(state, 'fatal: not a git repository (or any of the parent directories): .git', ru.explain.notAGitRepo, 128)
     return { state: appendCommand(state, rawInput, r.result), result: r.result }
   }
 

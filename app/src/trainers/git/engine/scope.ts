@@ -474,7 +474,7 @@ function isNegatedRealOption(cmd: ScopedOptionCommand, bare: string): boolean {
 }
 
 /** Классификация одной опции по правилу 1 — используется во всех трёх обработчиках (add/commit/status). */
-export type OptionClassification = 'scope' | 'outOfScope' | 'unknown' | 'ambiguous'
+export type OptionClassification = 'scope' | 'outOfScope' | 'unknown' | 'ambiguous' | 'help'
 
 export interface ClassifiedOption {
   kind: OptionClassification
@@ -494,6 +494,17 @@ export interface ClassifiedOption {
  * @param flag токен опции как он есть, например "-p", "--dry-run=foo" или сокращение "--mess"
  */
 export function classifyOption(cmd: ScopedOptionCommand, flag: string): ClassifiedOption {
+  // `-h`, `--help-all` печатают usage (код 129), `--help` у git открывает справку (код 0) — это
+  // не «unknown». `--help` справкой считается только первым аргументом после подкоманды: с
+  // другими аргументами и не первым git отвечает usage или ошибкой `git help` (код 129), и в
+  // этих случаях тренажёр тоже отказывает честно, а не печатает справку. Сокращения вроде
+  // `--he`, `--help-al` справкой не считаются: для них git отвечает `unknown option`.
+  // Сверено на git 2.53.0, 06.10.2026.
+  if (flag === '-h' || flag === '--help' || flag === '--help-all') return { kind: 'help', resolved: flag }
+  // `--git-completion-helper` и `--end-of-options` у git существуют (список опций для
+  // автодополнения; разделитель, как `--`), но раздел их не разбирает — честный отказ области, а
+  // не «unknown option». Сверено на git 2.53.0, 06.10.2026.
+  if (flag === '--git-completion-helper' || flag === '--end-of-options') return { kind: 'outOfScope', resolved: flag }
   const bare = flag.startsWith('--') ? flag.split('=')[0] : flag
   if (SECTION_SCOPE.options[cmd].flags.includes(bare)) return { kind: 'scope', resolved: bare }
   if (REAL_GIT_OPTIONS[cmd].includes(bare)) return { kind: 'outOfScope', resolved: bare }
