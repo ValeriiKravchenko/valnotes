@@ -134,6 +134,10 @@ export function classifyCommitFlagToken(
       }
       return { kind: 'flag', outcome: { stageAll, message: null, needsMessageFromNextToken: true } }
     }
+    // `h` в кластере git обрабатывает на своём месте, не дочитывая кластер: всё, что стоит
+    // ПОСЛЕ неё, не разбирается (`-hZ` — usage), а то, что ДО неё, уже разобрано (`-Zh` — ошибка
+    // про Z, выше по циклу). Сверено на git 2.53.0, 06.10.2026.
+    if (c === 'h') return { kind: 'error', result: onUnknownFlag('-h') }
     if (COMMIT_SHORT_VALUE_LETTERS.has(c)) {
       return { kind: 'error', result: onUnknownFlag('-' + c) }
     }

@@ -58,7 +58,7 @@ import {
   REVERT_USAGE,
   classifyUndoOption,
 } from './undoScope'
-import { classifySection2Option } from './branchScope'
+import { classifySection2Option, completionHelperMisuse, isSection2Command } from './branchScope'
 import { classifySection3Option } from './inspectScope'
 import { classifyPathspec, classifyRefToken, gitUnrecognizedArgument, UNDO_REF_GRAMMAR } from './outOfScopeForms'
 import type { ShellToken } from './shell'
@@ -439,6 +439,21 @@ function formatRevertOverwriteBlock(block: SafetyBlock): string {
   return `${parts.join('\n')}\nAborting\nfatal: revert failed`
 }
 
+/**
+ * Тема коммита-отката. Берётся первая СТРОКА сообщения (не первый абзац). Откат отката настоящий git называет «Reapply …»: если тема отменяемого
+ * коммита начинается с `Revert "`, а остаток после этого префикса сам НЕ начинается с `Revert "`
+ * (уже повторённые откаты git не сворачивает), слово Revert заменяется на Reapply, остальное
+ * остаётся как есть (парная кавычка не проверяется: `Revert "x" now` -> `Reapply "x" now`;
+ * `Revert "Revert "x""` -> `Revert "Revert "Revert "x"""`). Сверено на git 2.53.0, 06.10.2026.
+ */
+function revertMessage(targetMessage: string): string {
+  const prefix = 'Revert "'
+  if (targetMessage.startsWith(prefix) && !targetMessage.slice(prefix.length).startsWith(prefix)) {
+    return `Reapply "${targetMessage.slice(prefix.length)}`
+  }
+  return `Revert "${targetMessage}"`
+}
+
 function handleRevert(state: UndoState, args: string[]): { state: UndoState; result: CommandResult } {
   const flags = args.filter((a) => a.startsWith('-'))
   const positionals = args.filter((a) => !a.startsWith('-'))
@@ -500,7 +515,10 @@ function handleRevert(state: UndoState, args: string[]): { state: UndoState; res
   const { index, working } = applyTreeChange(state, merged.tree)
   const target = getCommit(state, targetId)
   const parent = currentTip(state)
-  const message = `Revert "${target?.message ?? ''}"`
+  // Тема отката строится от первой строки сообщения отменяемого коммита, остальное не переносится:
+  // у `-m a -m b` и у «a⏎b» откат называется `Revert "a"`. Сверено на git 2.53.0, 06.10.2026.
+  // Сообщение коммита хранится без очистки по правилам git (хвостовые пробелы, CRLF, лидирующие пустые строки): в этих случаях тема может отличаться от git.
+  const message = revertMessage((target?.message ?? '').split('\n')[0])
   const id = undoCommitHash(message, merged.tree, parent, state.clock)
   const nextState: UndoState = {
     ...state,
@@ -554,6 +572,11 @@ export function executeUndoCommand(state: UndoState, rawInput: string): { state:
   if (!isSection4Command(sub)) {
     if (REAL_GIT_COMMANDS.has(sub)) return respond(fail(state, ue.commandOutOfScope(sub)))
     return respond(fail(state, gitNotACommand(sub)))
+  }
+
+  if (isSection2Command(sub)) {
+    const misuse = completionHelperMisuse(sub, words.slice(2))
+    if (misuse !== null) return respond(fail(state, misuse))
   }
 
   let outcome: { state: UndoState; result: CommandResult }

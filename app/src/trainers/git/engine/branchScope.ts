@@ -834,6 +834,12 @@ const DOUBLE_NEGATION_LITERALS: Readonly<Record<Section2Command, ReadonlySet<str
  */
 export function classifySection2Option(cmd: Section2Command, token: string): Section2OptionClassification {
   if (token === '-h' || token === '--help') return { kind: 'help' }
+  // `--help-all` у всех шести команд шага A печатает usage (код 129, как `-h`) и распознаётся в любом
+  // месте списка опций, слева направо: опция раньше неё с ошибкой выигрывает. `--git-completion-helper`
+  // у них существует (список опций, код 0), но шаг A его не разбирает — это «real»; только как
+  // ЕДИНСТВЕННЫЙ аргумент (см. completionHelperMisuse). Сверено на git 2.53.0, 06.10.2026.
+  if (token === '--help-all') return { kind: 'help' }
+  if (token === '--git-completion-helper') return { kind: 'real', resolved: token }
   // Общая для всех команд git возможность parse-options.c, не специфичная ни для одной из пяти
   // команд шага A — поэтому нет ни в одном per-команда `long` и всегда "real" буквально.
   if (token === '--end-of-options') return { kind: 'real', resolved: '--end-of-options' }
@@ -871,4 +877,33 @@ export function classifySection2Option(cmd: Section2Command, token: string): Sec
     if (!set.short.has(ch)) return { kind: 'unknown', output: `error: unknown switch \`${ch}'` }
   }
   return { kind: 'real', resolved: token }
+}
+
+/**
+ * `--git-completion-helper` git признаёт только единственным аргументом команды (тогда печатает
+ * список опций, код 0). Если аргументов больше, это обычная неизвестная опция:
+ * "error: unknown option `git-completion-helper'" (код 129) — и слева направо, то есть раньше неё
+ * разобранная ошибка или справка выигрывает. Возвращает текст этой ошибки или `null`, если форма не
+ * его случай: флага нет, он единственный (дальше честный отказ области из classifySection2Option),
+ * или перед ним что-то, из-за чего его позиция неясна (`--`, `--end-of-options`, опция раньше с
+ * ошибкой/справкой, опция раньше, которая могла забрать его как значение) — тогда ответ даёт обычный
+ * разбор. Сверено на git 2.53.0, 06.10.2026, для status/add/commit/branch/checkout/merge.
+ */
+export function completionHelperMisuse(cmd: Section2Command, args: readonly string[]): string | null {
+  const at = args.indexOf('--git-completion-helper')
+  if (at === -1 || args.length === 1) return null
+  const set = SECTION2_OPTION_SETS[cmd]
+  for (const token of args.slice(0, at)) {
+    if (token === '--' || token === '--end-of-options') return null
+    if (!token.startsWith('-') || token === '-') continue
+    const classified = classifySection2Option(cmd, token)
+    if (classified.kind !== 'real') return null
+    if (token.startsWith('--')) {
+      // Длинная опция без «=»: может ожидать значение следующим словом — неясно, чем стал флаг.
+      if (!token.includes('=') && !set.longNoValue.has(classified.resolved)) return null
+    } else if (set.shortValue.has(token[token.length - 1])) {
+      return null
+    }
+  }
+  return "error: unknown option `git-completion-helper'"
 }

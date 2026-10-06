@@ -216,6 +216,71 @@ export function classifyInitArguments(args: readonly string[]): 'none' | 'foreig
   return args.length === 0 ? 'none' : 'foreign'
 }
 
+/** Длинные опции git init (сверено на git 2.53.0: `git init --git-completion-helper`, 06.10.2026), без `--`. */
+const INIT_LONG_OPTIONS = ['template', 'bare', 'shared', 'quiet', 'separate-git-dir', 'initial-branch', 'object-format', 'ref-format']
+const INIT_NEGATABLE = INIT_LONG_OPTIONS.filter((o) => o !== 'shared')
+const INIT_ALL_LONG = [...INIT_LONG_OPTIONS, ...INIT_NEGATABLE.map((o) => `no-${o}`)]
+/** Длинные опции, которые забирают значение следующим токеном (если оно не приклеено через «=»). */
+const INIT_LONG_WITH_VALUE = ['template', 'separate-git-dir', 'initial-branch', 'object-format', 'ref-format']
+/**
+ * Возможности parse-options, которых нет в списке `--git-completion-helper`: справка, перечень опций,
+ * конец опций. Их git обрабатывает особо (справка, значения-«опции» после `--end-of-options`), поэтому
+ * при встрече любой из них раздел 1 ничего не утверждает про остальные токены — честный отказ области.
+ */
+const INIT_SPECIAL_LONG = ['help', 'help-all', 'git-completion-helper', 'end-of-options']
+/** Короткие опции git init: -q, -b (берёт значение), -h (справка). */
+const INIT_SHORT_OPTIONS = 'qbh'
+
+/**
+ * Первая заведомо несуществующая опция `git init` — строка вида «error: unknown option `x'» (длинная)
+ * или «error: unknown switch `x'» (короткая, в том числе внутри кластера `-qZ`); `null`, если таких нет
+ * ИЛИ если уверенности нет (тогда вызывающий код даёт честный отказ области, второй ответ правила 1).
+ *
+ * Разбор идёт по порядку, как у git: первая плохая опция выигрывает. Токены, которые опция забирает
+ * как значение (`-b main`, `--initial-branch main`, `--template dir`, `--object-format sha1` и т.д.),
+ * опциями не считаются. Сомнительные формы — `-h`, `--help`, `--help-all`, `--git-completion-helper`,
+ * `--end-of-options`, неоднозначное сокращение, опция с обязательным значением без значения — дают
+ * `null`. Длинное имя, которое является началом какой-либо настоящей опции (сокращение), несуществующим
+ * не считается: git его разберёт, а раздел 1 — нет. После `--` опций нет. Значение после `=` остаётся
+ * в тексте ошибки, как у git. Сверено на git 2.53.0, 06.10.2026.
+ */
+export function findUnknownInitOption(args: readonly string[]): string | null {
+  for (let i = 0; i < args.length; i++) {
+    const token = args[i]
+    if (token === '--') return null
+    if (token.startsWith('--')) {
+      const name = token.slice(2).split('=')[0]
+      const hasValue = token.includes('=')
+      if (name === '') continue
+      if (INIT_SPECIAL_LONG.includes(name)) return null
+      const exact = INIT_ALL_LONG.includes(name)
+      const candidates = exact ? [name] : INIT_ALL_LONG.filter((o) => o.startsWith(name))
+      if (candidates.length === 0) return `error: unknown option \`${token.slice(2)}'`
+      if (candidates.length > 1) return null // неоднозначное сокращение: ответ git зависит от пары кандидатов
+      if (INIT_LONG_WITH_VALUE.includes(candidates[0]) && !hasValue) {
+        if (i + 1 >= args.length) return null // «requires a value»
+        i++ // следующий токен — значение, а не опция
+      }
+      continue
+    }
+    if (token.startsWith('-') && token.length > 1) {
+      const letters = token.slice(1)
+      for (let j = 0; j < letters.length; j++) {
+        const letter = letters[j]
+        if (letter === 'h') return null
+        if (!INIT_SHORT_OPTIONS.includes(letter)) return `error: unknown switch \`${letter}'`
+        if (letter === 'b') {
+          if (j < letters.length - 1) break // остаток токена — значение
+          if (i + 1 >= args.length) return null // «requires a value»
+          i++ // следующий токен — значение
+          break
+        }
+      }
+    }
+  }
+  return null
+}
+
 // ---------- git blame ----------
 
 export type BlameForeignForm = 'repeatedLineRange' | 'gluedLineRange' | 'revisionBeforeFile'
