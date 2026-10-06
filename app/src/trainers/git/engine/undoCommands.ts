@@ -517,6 +517,7 @@ function handleRevert(state: UndoState, args: string[]): { state: UndoState; res
   const parent = currentTip(state)
   // Тема отката строится от первой строки сообщения отменяемого коммита, остальное не переносится:
   // у `-m a -m b` и у «a⏎b» откат называется `Revert "a"`. Сверено на git 2.53.0, 06.10.2026.
+  // Сообщение коммита хранится без очистки по правилам git (хвостовые пробелы, CRLF, лидирующие пустые строки): в этих случаях тема может отличаться от git.
   const message = revertMessage((target?.message ?? '').split('\n')[0])
   const id = undoCommitHash(message, merged.tree, parent, state.clock)
   const nextState: UndoState = {
