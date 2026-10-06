@@ -43,7 +43,9 @@ jobs:
           set -o pipefail
           npm test -- --run 2>&1 | tee test-output.log
           # Защита от тихого пропуска: число выполненных тестов не должно быть нулевым
-          passed=$(grep -E '^ +Tests ' test-output.log | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' | head -n 1)
+          # В CI вывод цветной: убираем escape-коды, иначе строка «Tests» не находится
+          plain=$(sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' test-output.log)
+          passed=$(printf '%s\n' "$plain" | grep -E '^ *Tests +[0-9]+ passed' | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' | head -n 1)
           if [ -z "$passed" ] || [ "$passed" -eq 0 ]; then
             echo "::error::No tests were executed"
             exit 1
