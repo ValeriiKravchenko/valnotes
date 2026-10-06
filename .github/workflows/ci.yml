@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Новый запуск для той же ветки или PR отменяет предыдущий, ещё не завершённый
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+
+      # Vitest 5 требует Node ^22.12 или ^24, Vite 7 — ^20.19 или >=22.12;
+      # берём 24 (активная LTS), на ней проект и разрабатывается
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx --no-install tsc --noEmit -p tsconfig.app.json
+
+      - name: Tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test -- --run 2>&1 | tee test-output.log
+          # Защита от тихого пропуска: число выполненных тестов не должно быть нулевым
+          # В CI вывод цветной: убираем escape-коды, иначе строка «Tests» не находится
+          plain=$(sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' test-output.log)
+          passed=$(printf '%s\n' "$plain" | grep -E '^ *Tests +[0-9]+ passed' | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' | head -n 1)
+          if [ -z "$passed" ] || [ "$passed" -eq 0 ]; then
+            echo "::error::No tests were executed"
+            exit 1
+          fi
+          echo "Tests passed: $passed"
