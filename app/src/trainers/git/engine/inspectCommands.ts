@@ -27,7 +27,7 @@ import {
 } from './inspectRepo'
 import { diffBetween, diffNameOnly, diffStat } from './inspectDiff'
 import { classifyPathspec, classifyRefToken, gitUnrecognizedArgument, INSPECT_REF_GRAMMAR } from './outOfScopeForms'
-import { classifySection3Option, gitNotACommand, isGlobalGitOption, isSection3Command, REAL_GIT_COMMANDS } from './inspectScope'
+import { classifySection3Option, gitNotACommand, statusClusterFault, isGlobalGitOption, isSection3Command, REAL_GIT_COMMANDS } from './inspectScope'
 import { findShellRefusal, shellRefusalText, shellTokenize } from './shell'
 import { has } from './util'
 import { ru } from '../locales/ru'
@@ -53,8 +53,11 @@ function unknownLongOption(token: string): string {
   const bare = token.split('=')[0]
   return `error: unknown option \`${bare.slice(2)}'`
 }
+/** Короткий флаг status: виновна одна буква (или имя длинной опции после `-`), а не весь хвост (`-Z9` → `Z`). */
 function unknownShortOption(token: string): string {
-  return `error: unknown switch \`${token.slice(1)}'`
+  const fault = statusClusterFault(token)
+  if (fault === null) return `error: unknown switch \`${token.slice(1)}'`
+  return `error: unknown ${fault.kind === 'option' ? 'option' : 'switch'} \`${fault.text}'`
 }
 
 /** Классифицирует один флаг команды `cmd` и, если это не «в области», сразу строит готовый отказ — общая часть для log/diff/show/status. `null`, если флаг в области (вызывающий код сам решает, что с ним делать). */

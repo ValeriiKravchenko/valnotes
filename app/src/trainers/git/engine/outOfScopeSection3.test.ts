@@ -131,6 +131,58 @@ describe('опции', () => {
     expect(out('git status --bogus')).toBe("error: unknown option `bogus'")
   })
 
+  // Склеенные короткие флаги: git называет в ошибке одну букву, а не весь хвост.
+  // Все случаи сверены песочницей git 2.53.0, 08.10.2026 (код выхода у всех unknown switch — 129).
+  it('status: unknown switch называет первую неизвестную букву, хвост не читается', () => {
+    expect(out('git status -Z9')).toBe("error: unknown switch `Z'")
+    expect(out('git status -Zs')).toBe("error: unknown switch `Z'")
+    expect(out('git status -ZZ')).toBe("error: unknown switch `Z'")
+    expect(out('git status -sZ')).toBe("error: unknown switch `Z'")
+    expect(out('git status -sbZ')).toBe("error: unknown switch `Z'")
+    expect(out('git status -vZ')).toBe("error: unknown switch `Z'")
+    expect(out('git status -zZ')).toBe("error: unknown switch `Z'")
+    expect(out('git status -bZ')).toBe("error: unknown switch `Z'")
+    expect(out('git status -sZ9')).toBe("error: unknown switch `Z'")
+  })
+
+  it('status: цифра и знаки тоже буквы-виновники; одиночная -9 — не сокращение лимита', () => {
+    expect(out('git status -s9')).toBe("error: unknown switch `9'")
+    expect(out('git status -9')).toBe("error: unknown switch `9'")
+    expect(out('git status -s=')).toBe("error: unknown switch `='")
+    expect(out('git status -s=Z')).toBe("error: unknown switch `='")
+    expect(out('git status -s.Z')).toBe("error: unknown switch `.'")
+    expect(out('git status -Z-')).toBe("error: unknown switch `Z'")
+  })
+
+  it('status: знак "-" после буквы без значения — хвост читается как имя длинной опции', () => {
+    expect(out('git status -s-x')).toBe("error: unknown option `x'")
+    expect(out('git status -s--')).toBe("error: unknown option `-'")
+    expect(out('git status -s--short')).toBe("error: unknown option `-short'")
+    expect(out('git status -s-short')).toBe("error: unknown option `short'")
+    expect(out('git status -s-x=1')).toBe("error: unknown option `x=1'")
+    expect(out('git status -b-')).toBe("error: unknown option `'")
+  })
+
+  it('status: после -u, -M, -h хвост — значение или справка, виноватой буквы нет: отказ области, а не unknown switch', () => {
+    for (const line of ['git status -uZ', 'git status -uallZ', 'git status -MZ', 'git status -M5Z', 'git status -sMZ', 'git status -hZ']) {
+      expectRefusal(line)
+    }
+  })
+
+  it('status: ошибка в отдельном токене не зависит от соседних', () => {
+    expect(out('git status -s -Z9')).toBe("error: unknown switch `Z'")
+  })
+
+  it('log/show/diff: первая буква неизвестна — git называет весь токен (-Z9 → -Z9)', () => {
+    expect(out('git log -Z9')).toBe('fatal: unrecognized argument: -Z9')
+    expect(out('git show -Z9')).toBe('fatal: unrecognized argument: -Z9')
+    expect(out('git diff -Z9').split('\n')[0]).toBe('error: invalid option: -Z9')
+  })
+
+  it('log/show/diff: «известная буква + неизвестная» (-pZ, -sZ) — отказ области; у git там "-Z", но список этих команд неисчерпывающий', () => {
+    for (const line of ['git log -pZ', 'git show -pZ', 'git show -sZ', 'git diff -pZ', 'git log -Zp']) expectRefusal(line)
+  })
+
   it('обратный набор: опции в области работают', () => {
     expect(runInspectCommand(baseState(), 'git log --oneline').result?.ok).toBe(true)
     expect(runInspectCommand(baseState(), 'git status -s').result?.ok).toBe(true)

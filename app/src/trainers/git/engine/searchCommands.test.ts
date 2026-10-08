@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { createSearchSection, getAllCommits, runSearchCommand } from './searchSection'
 import type { SearchState } from './searchTypes'
 import { gitNotACommand } from './searchScope'
+import { grepTree } from './searchGrep'
 import { ru } from '../locales/ru'
 
 function run(state: SearchState, input: string) {
@@ -526,5 +527,56 @@ describe('миссии шага A', () => {
     expect(s.missionsDone.grepDebounce).toBe(true)
     s = run(s, 'git grep -n Debounce').state // неудачный запрос дальше по терминалу
     expect(s.missionsDone.grepDebounce).toBe(true)
+  })
+})
+
+// ---------- порядок файлов при нескольких путях (F7) ----------
+// Сверено песочницей git 2.53.0, 08.10.2026: пути после `--` (и без него) git обходит в порядке
+// байтов имени, а не в порядке командной строки; повторы схлопываются; с ревизией порядок тот же.
+
+describe('git grep — порядок файлов при нескольких путях', () => {
+  function wordState(): SearchState {
+    const files = ['README.md', 'Zeta.js', 'app.js', 'b.js', 'utils.js']
+    const tree: Record<string, string> = {}
+    for (const f of files) tree[f] = `word ${f}`
+    return createSearchSection({ commits: [{ message: 'one', tree, author: 'Tester', email: 'tester@example.invalid', date: { year: 2026, month: 1, day: 1, hour: 12, minute: 0, second: 0, tzOffsetMinutes: 0 } }] })
+  }
+  const lines = (...names: string[]) => names.map((n) => `${n}:word ${n}`).join('\n')
+
+  it('-- utils.js app.js README.md — README.md, app.js, utils.js (заглавная раньше строчной)', () => {
+    const { result } = run(wordState(), 'git grep word -- utils.js app.js README.md')
+    expect(result.output).toBe(lines('README.md', 'app.js', 'utils.js'))
+    expect(result.exitCode).toBe(0)
+  })
+
+  it('заглавная Zeta.js раньше строчных, даже если в команде последняя', () => {
+    const { result } = run(wordState(), 'git grep word -- b.js app.js Zeta.js README.md')
+    expect(result.output).toBe(lines('README.md', 'Zeta.js', 'app.js', 'b.js'))
+  })
+
+  it('без `--` несколько путей — честный отказ области (git там тоже сортирует, но раздел форму не разбирает)', () => {
+    const { result } = run(wordState(), 'git grep word utils.js app.js')
+    expect(result.output.startsWith('[тренажёр]')).toBe(true)
+  })
+
+  it('повтор пути не дублирует вывод; несуществующий путь в середине не мешает', () => {
+    const { result } = run(wordState(), 'git grep word -- utils.js nope.js app.js utils.js')
+    expect(result.output).toBe(lines('app.js', 'utils.js'))
+  })
+
+  it('с ревизией: HEAD:файл, порядок байтов имени', () => {
+    const { result } = run(wordState(), 'git grep word HEAD -- utils.js README.md app.js')
+    expect(result.output).toBe('HEAD:README.md:word README.md\nHEAD:app.js:word app.js\nHEAD:utils.js:word utils.js')
+  })
+
+  it('кириллица идёт после латиницы (байты UTF-8): порядок в grepTree', () => {
+    const tree = { 'ёж.txt': 'word', 'апп.js': 'word', 'Бета.js': 'word', 'b.js': 'word', 'Zeta.js': 'word' }
+    expect(grepTree(tree, /word/, ['ёж.txt', 'b.js', 'Zeta.js', 'апп.js', 'Бета.js']).map((m) => m.file)).toEqual([
+      'Zeta.js',
+      'b.js',
+      'Бета.js',
+      'апп.js',
+      'ёж.txt',
+    ])
   })
 })
