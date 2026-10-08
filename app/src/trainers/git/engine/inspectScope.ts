@@ -460,8 +460,30 @@ export const VERIFIED_SECTION3_OPTIONS: Record<Section3Command, readonly string[
  */
 const SECTION3_KNOWN_ABSENT: readonly string[] = ['--one', '--bogus', '--no-bogus', '--oneline=3', '-x', '-Z', '-Z9', '-k']
 
-/** `-<N>` (число): git принимает как лимит у log/show и как контекст/номер у diff. */
+/** `-<N>` (число): git принимает как лимит у log/show и как контекст/номер у diff. У status числа нет: `-9` — unknown switch `9'. */
 const NUMERIC_SHORTCUT = /^-\d+$/
+
+/**
+ * Первая виновная часть склеенных коротких флагов `git status` (parse-options.c, сверено
+ * песочницей git 2.53.0, 08.10.2026). Буквы читаются слева направо: `v`, `s`, `b`, `z` без
+ * значения — читаем дальше; `u`, `M` забирают весь хвост как значение, `h` печатает usage —
+ * виноватых дальше нет (`null`). Знак `-` после буквы без значения превращает хвост в имя
+ * длинной опции (`-s-x` — unknown option `x'). Любой другой символ — unknown switch на нём
+ * (`-Z9`, `-sZ`, `-s9`, `-s=` — виновны `Z`, `Z`, `9`, `=`); всё, что правее него, не читается.
+ */
+export type StatusClusterFault = { kind: 'switch'; text: string } | { kind: 'option'; text: string }
+
+export function statusClusterFault(token: string): StatusClusterFault | null {
+  const letters = [...token.slice(1)]
+  for (let i = 0; i < letters.length; i++) {
+    const c = letters[i]
+    if ('vsbz'.includes(c)) continue
+    if (c === 'u' || c === 'M' || c === 'h') return null
+    if (c === '-' && i > 0) return { kind: 'option', text: letters.slice(i + 1).join('') }
+    return { kind: 'switch', text: c }
+  }
+  return null
+}
 
 /**
  * Классификация одного флага (target.md, часть III, правило 1) — упрощённая версия
@@ -476,12 +498,13 @@ export function classifySection3Option(cmd: Section3Command, scopeFlags: readonl
   const bare = flag.startsWith('--') ? flag.split('=')[0] : flag
   if (scopeFlags.includes(bare)) return 'scope'
   if (SECTION3_REAL_OPTIONS[cmd].includes(bare)) return 'outOfScope'
-  if (NUMERIC_SHORTCUT.test(bare)) return 'outOfScope'
+  if (cmd !== 'status' && NUMERIC_SHORTCUT.test(bare)) return 'outOfScope'
   const verified = VERIFIED_SECTION3_OPTIONS[cmd]
   if (bare.startsWith('--no-') && verified.includes('--' + bare.slice('--no-'.length))) return 'outOfScope'
-  // Кластер коротких опций ("-sb", "-sz"): раздел 3 кластеры не разбирает, но если каждая буква
-  // известна git, то форма настоящая — отказ, а не «unknown switch».
-  if (/^-[A-Za-z]{2,}$/.test(bare) && cmd === 'status' && [...bare.slice(1)].every((c) => verified.includes('-' + c))) return 'outOfScope'
+  // Склеенные короткие флаги status ("-sb", "-sZ", "-s9"): раздел 3 кластеры не разбирает, но git
+  // читает их по буквам. Если виноватой буквы нет (все известны или хвост забрали `u`/`M`/`h`) —
+  // форма настоящая, отказ области; если есть — настоящая ошибка git (текст строит движок).
+  if (cmd === 'status' && /^-[^-].+/.test(bare)) return statusClusterFault(bare) === null ? 'outOfScope' : 'unknown'
   // status разбирается parse-options.c с однозначными сокращениями длинных опций.
   if (cmd === 'status' && bare.startsWith('--') && bare.length > 2 && verified.some((o) => o.startsWith(bare))) return 'outOfScope'
   return classifyOptionToken(bare, {
