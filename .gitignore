@@ -8,3 +8,12 @@ dist/
 book-links.json
 .env*
 .musepool/
+
+# keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
